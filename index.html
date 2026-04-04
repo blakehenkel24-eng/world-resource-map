@@ -4,11 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Global Resource Flows — Strategic Trade Intelligence</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
-<script src="https://unpkg.com/globe.gl@2.45.1/dist/globe.gl.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
         * {
             margin: 0;
@@ -18,16 +15,13 @@
 
         :root {
             --bg-primary: #0d0d0d;
-            --bg-panel: rgba(14, 14, 14, 0.97);
-            --bg-panel-hover: rgba(20, 20, 20, 0.97);
+            --bg-panel: rgba(20, 20, 20, 0.95);
             --accent: #FF6600;
             --accent-dim: rgba(255, 102, 0, 0.15);
-            --accent-glow: rgba(255, 102, 0, 0.4);
             --text-primary: #e8e8e8;
             --text-secondary: #A0A0A0;
             --text-muted: #606060;
-            --border: rgba(60, 60, 60, 0.6);
-            --border-active: rgba(255, 102, 0, 0.4);
+            --border: #333333;
             --oil: #FF6600;
             --lng: #00B4FF;
             --gas: #00B4FF;
@@ -43,73 +37,17 @@
             height: 100%;
             overflow: hidden;
             background: var(--bg-primary);
-            font-family: 'Inter', -apple-system, sans-serif;
+            font-family: Arial, sans-serif;
             color: var(--text-primary);
-            -webkit-font-smoothing: antialiased;
         }
 
-        #globeViz {
-            width: 100%;
-            height: 100%;
-            position: absolute;
-            top: 0;
-            left: 0;
-            background: var(--bg-primary);
-        }
-
-        /* Bloomberg-style loading screen */
-        .loading-screen {
-            position: fixed;
-            top: 0;
-            left: 0;
+        #map {
             width: 100%;
             height: 100%;
             background: var(--bg-primary);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 9999;
-            transition: opacity 0.8s ease;
         }
 
-        .loading-screen.hidden {
-            opacity: 0;
-            pointer-events: none;
-        }
-
-        .loading-ticker {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 11px;
-            color: var(--accent);
-            letter-spacing: 2px;
-            margin-bottom: 20px;
-        }
-
-        .loading-bar {
-            width: 200px;
-            height: 2px;
-            background: var(--border);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .loading-bar::after {
-            content: '';
-            position: absolute;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: var(--accent);
-            animation: loadingSlide 1.5s ease-in-out infinite;
-        }
-
-        @keyframes loadingSlide {
-            0% { left: -100%; }
-            100% { left: 100%; }
-        }
-
-        /* Header Panel - Bloomberg Style */
+        /* Header Panel */
         .header-panel {
             position: fixed;
             top: 16px;
@@ -118,16 +56,11 @@
             background: var(--bg-panel);
             border: 1px solid var(--border);
             padding: 14px 18px;
-            max-width: 300px;
-            display: none;
-        }
-
-        .header-panel.visible {
-            display: block;
+            min-width: 200px;
         }
 
         .header-title {
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 600;
             color: var(--accent);
             letter-spacing: 0.5px;
@@ -135,66 +68,97 @@
         }
 
         .header-subtitle {
-            font-size: 10px;
+            font-size: 9px;
             color: var(--text-secondary);
             text-transform: uppercase;
             letter-spacing: 1px;
-            margin-bottom: 12px;
-            padding-bottom: 10px;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
             border-bottom: 1px solid var(--border);
         }
 
         .header-stat {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 6px;
-            font-size: 11px;
+            margin-bottom: 5px;
+            font-size: 10px;
         }
 
         .header-stat-label {
             color: var(--text-secondary);
-            font-family: 'Inter', sans-serif;
         }
 
         .header-stat-value {
             color: var(--text-primary);
-            font-family: 'JetBrains Mono', monospace;
+            font-family: 'Courier New', monospace;
             font-weight: 500;
         }
 
-        .header-hint {
-            margin-top: 12px;
-            padding-top: 10px;
-            border-top: 1px solid var(--border);
-            font-size: 10px;
-            color: var(--text-muted);
-        }
-
-        .header-hint span {
-            color: var(--accent);
-        }
-
-        /* Legend Panel - Bottom Sheet on Mobile */
-        .legend-panel {
+        /* Layer Toggle - Top Right */
+        .layer-toggle {
             position: fixed;
+            top: 16px;
+            right: 16px;
             z-index: 1000;
             background: var(--bg-panel);
             border: 1px solid var(--border);
-            border-radius: 0;
-            padding: 0;
-            width: 100%;
-            bottom: 0;
-            left: 0;
-            transform: translateY(100%);
-            transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-            max-height: 70vh;
-            overflow-y: auto;
+            padding: 12px 14px;
+            min-width: 140px;
         }
 
-        .legend-panel.open {
-            transform: translateY(0);
+        .layer-toggle-title {
+            font-size: 9px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 10px;
         }
 
+        .layer-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            padding: 6px 0;
+            min-height: 44px;
+        }
+
+        .layer-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .layer-checkbox {
+            width: 20px;
+            height: 20px;
+            border: 1.5px solid var(--border);
+            background: transparent;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: var(--bg-primary);
+            flex-shrink: 0;
+        }
+
+        .layer-checkbox.active {
+            background: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .layer-label {
+            font-size: 11px;
+            color: var(--text-secondary);
+            cursor: pointer;
+        }
+
+        .layer-item:hover .layer-label {
+            color: var(--text-primary);
+        }
+
+        /* Legend Toggle - Bottom Center */
         .legend-toggle {
             position: fixed;
             bottom: 16px;
@@ -217,7 +181,7 @@
         }
 
         .legend-toggle:hover, .legend-toggle:active {
-            background: var(--bg-panel-hover);
+            background: rgba(30, 30, 30, 0.95);
             border-color: var(--accent);
         }
 
@@ -228,8 +192,27 @@
             transition: transform 0.3s ease;
         }
 
-        .legend-panel.open + .legend-toggle svg {
+        .legend-toggle.open svg {
             transform: rotate(180deg);
+        }
+
+        /* Legend Panel - Bottom Sheet */
+        .legend-panel {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 1000;
+            background: var(--bg-panel);
+            border-top: 1px solid var(--border);
+            transform: translateY(100%);
+            transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+
+        .legend-panel.open {
+            transform: translateY(0);
         }
 
         .legend-content {
@@ -262,15 +245,12 @@
             color: var(--text-secondary);
             cursor: pointer;
             padding: 6px 0;
-        }
-
-        .legend-item:hover {
-            color: var(--text-primary);
+            min-height: 44px;
         }
 
         .legend-dot {
-            width: 12px;
-            height: 12px;
+            width: 14px;
+            height: 14px;
             border-radius: 50%;
             flex-shrink: 0;
             border: 2px solid transparent;
@@ -284,14 +264,12 @@
 
         .legend-dot.oil { background: var(--oil); }
         .legend-dot.lng { background: var(--lng); }
-        .legend-dot.gas { background: var(--gas); }
         .legend-dot.grain { background: var(--grain); }
         .legend-dot.minerals { background: var(--minerals); }
         .legend-dot.goods { background: var(--goods); }
-        .legend-dot.bypass { background: var(--bypass); }
 
         .legend-line {
-            width: 28px;
+            width: 30px;
             height: 3px;
             border-radius: 2px;
             flex-shrink: 0;
@@ -311,248 +289,173 @@
             margin: 14px 0;
         }
 
-        /* Layer Toggle - Top Right */
-        .layer-toggle {
-            position: fixed;
-            top: 16px;
-            right: 16px;
-            z-index: 1000;
+        /* Popup Styling */
+        .leaflet-popup-content-wrapper {
             background: var(--bg-panel);
             border: 1px solid var(--border);
-            padding: 12px 14px;
+            border-radius: 0;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
         }
 
-        .layer-toggle-title {
-            font-size: 9px;
-            font-weight: 600;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-            margin-bottom: 10px;
+        .leaflet-popup-content {
+            margin: 0;
+            padding: 0;
+            color: var(--text-primary);
+            font-family: Arial, sans-serif;
+            min-width: 260px;
+            max-width: 340px;
         }
 
-        .layer-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 8px;
-            cursor: pointer;
-            padding: 4px 0;
-            min-height: 32px;
+        .leaflet-popup-tip {
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
         }
 
-        .layer-item:last-child {
-            margin-bottom: 0;
-        }
-
-        .layer-checkbox {
-            width: 18px;
-            height: 18px;
-            border: 1.5px solid var(--border);
-            border-radius: 3px;
-            background: transparent;
-            cursor: pointer;
-            display: flex;
+        .leaflet-popup-close-button {
+            color: var(--text-secondary) !important;
+            font-size: 20px !important;
+            padding: 8px 10px !important;
+            min-width: 44px;
+            min-height: 44px;
+            display: flex !important;
             align-items: center;
             justify-content: center;
-            font-size: 11px;
-            color: var(--accent);
-            transition: all 0.2s ease;
         }
 
-        .layer-checkbox.active {
-            background: var(--accent);
-            border-color: var(--accent);
-            color: var(--bg-primary);
+        .leaflet-popup-close-button:hover {
+            color: var(--text-primary) !important;
+            background: rgba(40, 40, 40, 0.95);
         }
 
-        .layer-label {
-            font-size: 11px;
-            color: var(--text-secondary);
-            cursor: pointer;
-        }
-
-        .layer-item:hover .layer-label {
-            color: var(--text-primary);
-        }
-
-        /* Info Card - Slide Up from Bottom */
-        .info-card {
-            position: fixed;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            z-index: 1002;
-            background: var(--bg-panel);
-            border-top: 2px solid var(--accent);
-            transform: translateY(100%);
-            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            max-height: 70vh;
-            overflow-y: auto;
-        }
-
-        .info-card.open {
-            transform: translateY(0);
-        }
-
-        .info-card-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 14px 18px;
+        /* Popup Content Styling */
+        .popup-header {
+            padding: 12px 14px 10px;
             border-bottom: 1px solid var(--border);
-            position: sticky;
-            top: 0;
-            background: var(--bg-panel);
         }
 
-        .info-card-title {
+        .popup-title {
             font-size: 14px;
             font-weight: 600;
             color: var(--text-primary);
-            display: flex;
-            align-items: center;
-            gap: 10px;
+            margin-bottom: 2px;
         }
 
-        .info-card-type {
+        .popup-type {
             font-size: 9px;
             text-transform: uppercase;
             letter-spacing: 1px;
-            color: var(--text-muted);
-            font-weight: 500;
+            color: var(--accent);
+            font-weight: 600;
         }
 
-        .info-card-close {
-            width: 36px;
-            height: 36px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            color: var(--text-secondary);
-            border-radius: 4px;
-            transition: all 0.2s ease;
+        .popup-body {
+            padding: 12px 14px 14px;
         }
 
-        .info-card-close:hover {
-            background: var(--bg-panel-hover);
-            color: var(--text-primary);
-        }
-
-        .info-card-body {
-            padding: 16px 18px 24px;
-        }
-
-        .info-stat-grid {
+        .popup-stat-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-            gap: 12px;
-            margin-bottom: 16px;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 8px;
+            margin-bottom: 12px;
         }
 
-        .info-stat {
-            background: var(--bg-panel-hover);
+        .popup-stat {
+            background: rgba(30, 30, 30, 0.8);
             border: 1px solid var(--border);
-            padding: 10px 12px;
+            padding: 8px 10px;
         }
 
-        .info-stat-label {
+        .popup-stat-label {
             font-size: 9px;
             color: var(--text-muted);
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            margin-bottom: 4px;
+            margin-bottom: 3px;
         }
 
-        .info-stat-value {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 13px;
+        .popup-stat-value {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
             font-weight: 600;
             color: var(--accent);
         }
 
-        .info-stat-value.small {
-            font-size: 11px;
-            color: var(--text-primary);
+        .popup-section {
+            margin-bottom: 10px;
         }
 
-        .info-section {
-            margin-bottom: 14px;
-        }
-
-        .info-section:last-child {
+        .popup-section:last-child {
             margin-bottom: 0;
         }
 
-        .info-section-title {
+        .popup-section-title {
             font-size: 9px;
             font-weight: 600;
             color: var(--text-muted);
             text-transform: uppercase;
             letter-spacing: 1px;
-            margin-bottom: 6px;
+            margin-bottom: 4px;
         }
 
-        .info-section-content {
-            font-size: 12px;
+        .popup-section-content {
+            font-size: 11px;
             color: var(--text-secondary);
-            line-height: 1.6;
+            line-height: 1.5;
         }
 
-        .info-impact {
+        .popup-impact {
             background: rgba(255, 61, 61, 0.1);
             border: 1px solid rgba(255, 61, 61, 0.3);
             border-left: 3px solid var(--chokepoint);
-            padding: 12px 14px;
-            margin: 14px 0;
+            padding: 10px 12px;
+            margin: 10px 0;
         }
 
-        .info-impact.warning {
+        .popup-impact.warning {
             background: rgba(255, 102, 0, 0.1);
             border-color: rgba(255, 102, 0, 0.3);
             border-left-color: var(--accent);
         }
 
-        .info-impact-label {
+        .popup-impact-label {
             font-size: 9px;
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.5px;
             color: var(--chokepoint);
-            margin-bottom: 4px;
+            margin-bottom: 3px;
         }
 
-        .info-impact.warning .info-impact-label {
+        .popup-impact.warning .popup-impact-label {
             color: var(--accent);
         }
 
-        .info-impact-text {
+        .popup-impact-text {
             font-size: 11px;
             color: var(--text-primary);
-            line-height: 1.5;
+            line-height: 1.4;
         }
 
-        .info-status {
+        .popup-status {
             background: rgba(0, 180, 255, 0.08);
             border: 1px solid rgba(0, 180, 255, 0.2);
-            padding: 10px 12px;
-            margin-top: 14px;
+            padding: 8px 10px;
+            margin-top: 10px;
         }
 
-        .info-status-label {
+        .popup-status-label {
             font-size: 9px;
             font-weight: 600;
             color: var(--lng);
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            margin-bottom: 4px;
+            margin-bottom: 3px;
         }
 
-        .info-status-text {
-            font-size: 11px;
+        .popup-status-text {
+            font-size: 10px;
             color: var(--text-secondary);
-            line-height: 1.5;
+            line-height: 1.4;
         }
 
         /* Zoom Controls */
@@ -588,7 +491,7 @@
         }
 
         .zoom-btn:hover, .zoom-btn:active {
-            background: var(--bg-panel-hover);
+            background: rgba(30, 30, 30, 0.95);
             border-color: var(--accent);
             color: var(--accent);
         }
@@ -596,40 +499,6 @@
         .zoom-btn svg {
             width: 20px;
             height: 20px;
-        }
-
-        /* Back to Overview Button */
-        .back-btn {
-            position: fixed;
-            top: 16px;
-            left: 16px;
-            z-index: 1001;
-            background: var(--bg-panel);
-            border: 1px solid var(--border);
-            padding: 10px 16px;
-            font-size: 11px;
-            font-weight: 500;
-            color: var(--text-primary);
-            cursor: pointer;
-            display: none;
-            align-items: center;
-            gap: 8px;
-            min-height: 44px;
-        }
-
-        .back-btn.visible {
-            display: flex;
-        }
-
-        .back-btn:hover {
-            background: var(--bg-panel-hover);
-            border-color: var(--accent);
-        }
-
-        .back-btn svg {
-            width: 16px;
-            height: 16px;
-            stroke: var(--accent);
         }
 
         /* Pulsing animation for chokepoints */
@@ -665,22 +534,27 @@
         /* Mobile breakpoints */
         @media (max-width: 640px) {
             .header-panel {
-                max-width: calc(100% - 32px);
+                top: 8px;
+                left: 8px;
+                right: 8px;
+                min-width: auto;
+                padding: 10px 12px;
+            }
+
+            .header-title {
+                font-size: 11px;
             }
 
             .layer-toggle {
                 top: auto;
-                bottom: 90px;
+                bottom: 80px;
                 right: 8px;
                 padding: 10px 12px;
+                min-width: auto;
             }
 
             .layer-toggle-title {
                 display: none;
-            }
-
-            .layer-item {
-                margin-bottom: 4px;
             }
 
             .layer-label {
@@ -689,81 +563,32 @@
 
             .zoom-controls {
                 right: 8px;
-                bottom: 90px;
-            }
-
-            .info-card {
-                max-height: 75vh;
-            }
-
-            .info-stat-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-
-        @media (min-width: 1024px) {
-            .legend-panel {
-                bottom: 16px;
-                left: 16px;
-                top: auto;
-                right: auto;
-                width: 280px;
-                max-height: calc(100vh - 100px);
-                border-radius: 8px;
-                transform: none;
-            }
-
-            .legend-panel.open {
-                transform: none;
+                bottom: 80px;
             }
 
             .legend-toggle {
-                display: none;
+                bottom: 8px;
+                min-width: 120px;
+                padding: 10px 20px;
             }
 
-            .header-panel.visible {
-                display: block;
+            .popup-stat-grid {
+                grid-template-columns: repeat(2, 1fr);
             }
 
-            .info-card {
-                left: auto;
-                width: 420px;
-                max-height: calc(100vh - 120px);
-                max-width: 100%;
-                border-left: 2px solid var(--accent);
-                border-top: none;
-                border-radius: 8px 0 0 8px;
-                transform: translateX(100%);
-                right: 0;
-                bottom: 16px;
-            }
-
-            .info-card.open {
-                transform: translateX(0);
+            .leaflet-popup-content {
+                min-width: 240px;
+                max-width: 300px;
             }
         }
     </style>
 </head>
 <body>
-    <!-- Loading Screen -->
-    <div class="loading-screen" id="loadingScreen">
-        <div class="loading-ticker">LOADING GLOBAL RESOURCE FLOWS</div>
-        <div class="loading-bar"></div>
-    </div>
-
-    <!-- Globe Container -->
-    <div id="globeViz"></div>
-
-    <!-- Back Button -->
-    <button class="back-btn" id="backBtn" onclick="closeInfoCard()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M19 12H5M12 19l-7-7 7-7"/>
-        </svg>
-        <span>Back to Overview</span>
-    </button>
+    <!-- Map Container -->
+    <div id="map"></div>
 
     <!-- Header Panel -->
-    <div class="header-panel visible" id="headerPanel">
+    <div class="header-panel">
         <div class="header-title">GLOBAL RESOURCE FLOWS</div>
         <div class="header-subtitle">Strategic Trade Intelligence</div>
         <div class="header-stat">
@@ -777,9 +602,6 @@
         <div class="header-stat">
             <span class="header-stat-label">Active Routes</span>
             <span class="header-stat-value">18</span>
-        </div>
-        <div class="header-hint">
-            <span>TAP</span> markers to explore · <span>DRAG</span> to rotate globe
         </div>
     </div>
 
@@ -800,7 +622,7 @@
         </div>
     </div>
 
-    <!-- Legend Panel (Bottom Sheet on Mobile) -->
+    <!-- Legend Panel -->
     <div class="legend-panel" id="legendPanel">
         <div class="legend-content">
             <div class="legend-section">
@@ -860,7 +682,9 @@
             </div>
         </div>
     </div>
-    <button class="legend-toggle" onclick="toggleLegend()">
+
+    <!-- Legend Toggle -->
+    <button class="legend-toggle" id="legendToggle" onclick="toggleLegend()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M12 5v14M5 12h14"/>
         </svg>
@@ -869,40 +693,22 @@
 
     <!-- Zoom Controls -->
     <div class="zoom-controls">
-        <button class="zoom-btn" onclick="zoomIn()">
+        <button class="zoom-btn" onclick="map.zoomIn()">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M12 5v14M5 12h14"/>
             </svg>
         </button>
-        <button class="zoom-btn" onclick="zoomOut()">
+        <button class="zoom-btn" onclick="map.zoomOut()">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M5 12h14"/>
             </svg>
         </button>
-        <button class="zoom-btn" onclick="resetView()">
+        <button class="zoom-btn" onclick="map.setView([20, 20], 2)">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="12" cy="12" r="3"/>
                 <path d="M12 2v4M12 18v4M2 12h4M18 12h4"/>
             </svg>
         </button>
-    </div>
-
-    <!-- Info Card (Slide Up) -->
-    <div class="info-card" id="infoCard">
-        <div class="info-card-header">
-            <div>
-                <div class="info-card-title" id="infoCardTitle">Title</div>
-                <div class="info-card-type" id="infoCardType">Type</div>
-            </div>
-            <div class="info-card-close" onclick="closeInfoCard()">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M18 6L6 18M6 6l12 12"/>
-                </svg>
-            </div>
-        </div>
-        <div class="info-card-body" id="infoCardBody">
-            <!-- Dynamic content -->
-        </div>
     </div>
 
     <script>
@@ -1041,7 +847,7 @@
                 status: "2026: Tensions elevated. China's military presence increased. US-Taiwan trade with contingency planning."
             },
             {
-                name: "Torres/Lombok Straits",
+                name: "Torres Strait",
                 lat: -10.0, lng: 142.0,
                 stats: [
                     { label: "Australia-Asia", value: "Critical" },
@@ -1054,17 +860,17 @@
                 status: "2026: Operating normally. Australia-China relations normalized. Growing as Malacca alternative."
             },
             {
-                name: "Red Sea Corridor",
-                lat: 22.0, lng: 38.5,
+                name: "Lombok Strait",
+                lat: -8.5, lng: 116.0,
                 stats: [
-                    { label: "Saudi/Egypt", value: "Oil to Europe" },
-                    { label: "Route", value: "Gulf-Red Sea" },
-                    { label: "Threat", value: "Houthi Yemen" }
+                    { label: "Aus-Asia Route", value: "Alternative" },
+                    { label: "Depth", value: "Deepwater" },
+                    { label: "Savings", value: "~3 days" }
                 ],
-                context: "Gulf oil through Red Sea to Suez. Alternative: East-West pipeline across Saudi Arabia (5M bbl/day capacity).",
-                actors: "Saudi Arabia controls eastern shore. Egypt controls northern entrance via Suez.",
-                impact: "Saudi pipeline is insurance against Hormuz disruption. Combined with Cape, multiple paths exist.",
-                status: "2026: Pipeline operational. Red Sea route threatened but flowing at reduced volume."
+                context: "Alternative to Lombok for larger vessels. Indonesian controlled. Growing in importance.",
+                actors: "Indonesia controls. Key for Australian exports to Asia.",
+                impact: "If blocked, Australian coal and LNG must use Sunda Strait adding 3+ days.",
+                status: "2026: Operating normally. Strategic alternative to crowded Malacca."
             }
         ];
 
@@ -1072,13 +878,17 @@
         const resourceZones = [
             // Oil
             { name: "Saudi Arabia", lat: 24.0, lng: 45.0, type: "Oil", color: "#FF6600", value: "10M bbl/day", detail: "Ghawar field — world's largest. Kuwait/Iraq Rumaila. 35% of world oil exports." },
-            { name: "Russia West Siberia", lat: 60.0, lng: 75.0, type: "Oil & Gas", color: "#FF6600", value: "10M bbl/day", detail: "Samotlar, largest oil field. Second largest oil exporter. Gazprom controls gas." },
+            { name: "Kuwait/Iraq", lat: 30.0, lng: 47.0, type: "Oil", color: "#FF6600", value: "4M bbl/day", detail: "Rumaila, Burgan fields. Second largest concentration after Saudi." },
+            { name: "Iran", lat: 30.0, lng: 53.0, type: "Oil", color: "#FF6600", value: "3.5M bbl/day", detail: "Fourth largest producer. Sanctions limit exports. Controls Hormuz northern shore." },
+            { name: "UAE", lat: 24.0, lng: 54.0, type: "Oil", color: "#FF6600", value: "4M bbl/day", detail: "Abu Dhabi fields. Third largest OPEC producer. Controls Hormuz southern shore." },
+            { name: "Russia West Siberia", lat: 60.0, lng: 75.0, type: "Oil", color: "#FF6600", value: "10M bbl/day", detail: "Samotlar, largest oil field. Second largest oil exporter. Gazprom controls gas." },
+            { name: "Russia Volga/Ural", lat: 55.0, lng: 50.0, type: "Oil", color: "#FF6600", value: "2M bbl/day", detail: "Second largest Russian oil region. Provides-Europe pipeline access." },
             { name: "US Permian Basin", lat: 31.0, lng: -103.0, type: "Oil", color: "#FF6600", value: "6M bbl/day", detail: "Texas/New Mexico. Largest US shale play. World's largest oil producer since 2018." },
             { name: "US Bakken", lat: 47.0, lng: -103.0, type: "Oil", color: "#FF6600", value: "1.2M bbl/day", detail: "North Dakota. Light sweet crude. Pipeline to Midwest and Gulf Coast." },
             { name: "Venezuela Orinoco", lat: 7.5, lng: -65.0, type: "Oil", color: "#FF6600", value: "3M bbl/day", detail: "Largest proven reserves (~300B bbl). Heavy oil requires upgrading. US sanctions limit exports." },
             { name: "Nigeria Delta", lat: 5.0, lng: 6.0, type: "Oil", color: "#FF6600", value: "2M bbl/day", detail: "Africa's largest producer. Bonny Light high-quality crude. Offshore deepwater growing." },
             { name: "Brazil Pre-Salt", lat: -27.0, lng: -42.0, type: "Oil", color: "#FF6600", value: "3.5M bbl/day", detail: "Santos Basin. Lula, Buzios fields. Transformational for Brazil. Petrobras monopoly." },
-            { name: "North Sea", lat: 58.0, lng: 2.0, type: "Oil & Gas", color: "#00B4FF", value: "2M bbl/day", detail: "Norway/UK. Ekofisk, Brent, Forties. Norway now Europe's largest gas exporter." },
+            { name: "UK/North Sea", lat: 58.0, lng: 2.0, type: "Oil & Gas", color: "#00B4FF", value: "2M bbl/day", detail: "Norway/UK. Ekofisk, Brent, Forties. Norway now Europe's largest gas exporter." },
             
             // LNG/Gas
             { name: "Qatar North Dome", lat: 25.5, lng: 51.0, type: "LNG", color: "#00B4FF", value: "77M tonnes/yr", detail: "World's largest LNG exporter. Qatargas, RasGas. Key supplier to Asia and Europe." },
@@ -1094,11 +904,10 @@
             { name: "South Africa PGM", lat: -25.0, lng: 28.0, type: "PGM", color: "#FFD700", value: "70% platinum", detail: "Bushveld Complex. Platinum, palladium, rhodium. Critical for catalytic converters." },
             
             // Agriculture
-            { name: "US Midwest", lat: 41.0, lng: -93.0, type: "Grain", color: "#8BC34A", value: "30% exports", detail: "Iowa, Illinois, Nebraska. Corn belt. World's largest corn exporter. Second largest wheat." },
             { name: "Ukraine Corridor", lat: 48.0, lng: 32.0, type: "Grain", color: "#8BC34A", value: "10% wheat", detail: "Black Sea region. World's breadbasket. War disrupted but exports via Danube continuing." },
+            { name: "US Midwest", lat: 41.0, lng: -93.0, type: "Grain", color: "#8BC34A", value: "30% exports", detail: "Iowa, Illinois, Nebraska. Corn belt. World's largest corn exporter. Second largest wheat." },
             { name: "Brazil Soy", lat: -10.0, lng: -55.0, type: "Soy", color: "#8BC34A", value: "50% exports", detail: "Mato Grosso, Parana. World's largest soy exporter. China buys 60%." },
-            { name: "Argentina Soy", lat: -33.0, lng: -64.0, type: "Soy & Lithium", color: "#8BC34A", value: "15% soy", detail: "Pampas region. Third largest soy exporter. Lithium triangle with Chile." },
-            { name: "Australia Iron Ore", lat: -22.0, lng: 117.0, type: "Iron Ore", color: "#90A4AE", value: "50% trade", detail: "Pilbara (Rio, BHP, FMG). World's largest iron ore. Feeds Chinese steel industry." }
+            { name: "Argentina Soy", lat: -33.0, lng: -64.0, type: "Soy", color: "#8BC34A", value: "15% soy", detail: "Pampas region. Third largest soy exporter. Lithium triangle with Chile." }
         ];
 
         // Shipping Routes Data
@@ -1108,19 +917,19 @@
             // Gulf to Europe via Suez
             { name: "Gulf → Europe via Suez", srcLat: 26.0, srcLng: 52.0, dstLat: 36.0, dstLng: -5.0, color: "#FF6600", type: "oil", label: "Oil: Gulf to Mediterranean" },
             // Gulf bypass via Cape
-            { name: "Gulf → Cape → Europe", srcLat: 26.0, srcLng: 52.0, dstLat: -34.0, dstLng: 18.5, altDstLat: 52.0, altDstLng: 5.0, color: "#607D8B", type: "bypass", label: "Bypass: +2 weeks to Europe" },
+            { name: "Gulf → Cape → Europe", srcLat: 26.0, srcLng: 52.0, dstLat: -34.0, dstLng: 18.5, color: "#607D8B", type: "bypass", label: "Bypass: +2 weeks to Europe" },
             // Russia to Europe
             { name: "Russia → Europe", srcLat: 65.0, srcLng: 40.0, dstLat: 54.0, dstLng: 8.0, color: "#00B4FF", type: "gas", label: "Gas: Norway/Russia to Europe" },
             // US to Asia via Panama
             { name: "US → Panama → Asia", srcLat: 28.0, srcLng: -92.0, dstLat: 25.0, dstLng: 121.0, color: "#00B4FF", type: "lng", label: "LNG & Grain: US to Asia" },
             // US bypass Cape
-            { name: "US → Cape → Asia", srcLat: 28.0, srcLng: -92.0, dstLat: -34.0, dstLng: 18.5, altDstLat: 25.0, altDstLng: 121.0, color: "#607D8B", type: "bypass", label: "Bypass: US LNG to Asia" },
+            { name: "US → Cape → Asia", srcLat: 28.0, srcLng: -92.0, dstLat: -34.0, dstLng: 18.5, color: "#607D8B", type: "bypass", label: "Bypass: US LNG to Asia" },
             // Australia to China
             { name: "Australia → China", srcLat: -22.0, srcLng: 117.0, dstLat: 25.0, dstLng: 121.0, color: "#90A4AE", type: "goods", label: "Iron Ore, Coal, LNG: Australia to China" },
             // Brazil to China
-            { name: "Brazil → Cape → China", srcLat: -23.0, srcLng: -42.0, dstLat: -34.0, dstLng: 18.5, altDstLat: 25.0, altDstLng: 121.0, color: "#8BC34A", type: "grain", label: "Soy & Iron Ore: Brazil to China" },
+            { name: "Brazil → Cape → China", srcLat: -23.0, srcLng: -42.0, dstLat: -34.0, dstLng: 18.5, color: "#8BC34A", type: "grain", label: "Soy & Iron Ore: Brazil to China" },
             // Argentina to China
-            { name: "Argentina → Cape → China", srcLat: -35.0, srcLng: -58.0, dstLat: -34.0, dstLng: 18.5, altDstLat: 25.0, altDstLng: 121.0, color: "#8BC34A", type: "grain", label: "Soy & Beef: Argentina to China" },
+            { name: "Argentina → Cape → China", srcLat: -35.0, srcLng: -58.0, dstLat: -34.0, dstLng: 18.5, color: "#8BC34A", type: "grain", label: "Soy & Beef: Argentina to China" },
             // Ukraine grain
             { name: "Ukraine → Black Sea", srcLat: 46.0, srcLng: 32.0, dstLat: 35.0, dstLng: 30.0, color: "#8BC34A", type: "grain", label: "Grain: Ukraine to World" },
             // Canada to Asia
@@ -1128,18 +937,20 @@
             // Chile to Asia
             { name: "Chile → Panama → Asia", srcLat: -33.0, srcLng: -71.0, dstLat: 25.0, dstLng: 121.0, color: "#FFD700", type: "minerals", label: "Copper & Lithium: Chile to Asia" },
             // Saudi to Europe via Red Sea
-            { name: "Saudi → Red Sea → Europe", srcLat: 22.0, srcLng: 50.0, dstLat: 30.5, dstLng: 32.3, altDstLat: 36.0, altDstLng: 5.0, color: "#FF6600", type: "oil", label: "Oil: Saudi to Europe via Red Sea" },
+            { name: "Saudi → Red Sea → Europe", srcLat: 22.0, srcLng: 50.0, dstLat: 30.5, dstLng: 32.3, color: "#FF6600", type: "oil", label: "Oil: Saudi to Europe via Red Sea" },
             // Norway to Europe
             { name: "Norway → Europe", srcLat: 62.0, srcLng: 6.0, dstLat: 54.0, dstLng: 8.0, color: "#00B4FF", type: "gas", label: "Gas: Norway to Europe" },
             // West Africa to Europe
-            { name: "West Africa → Europe", srcLat: 4.0, srcLng: 4.0, dstLat: 52.0, dstLng: 5.0, color: "#FF6600", type: "oil", label: "Oil: Nigeria to Europe/Americas" },
+            { name: "West Africa → Europe", srcLat: 4.0, lng: 4.0, dstLat: 52.0, dstLng: 5.0, color: "#FF6600", type: "oil", label: "Oil: Nigeria to Europe/Americas" },
             // Europe to Asia via Suez
             { name: "Europe → Suez → Asia", srcLat: 40.0, srcLng: 0.0, dstLat: 25.0, dstLng: 121.0, color: "#90A4AE", type: "goods", label: "Goods: Europe to Asia" }
         ];
 
-        // ==================== GLOBE SETUP ====================
-        let globe;
-        let world;
+        // ==================== MAP SETUP ====================
+        let map;
+        let chokepointMarkers = [];
+        let resourceMarkers = [];
+        let routeLines = [];
         
         const layersVisible = {
             routes: true,
@@ -1147,268 +958,247 @@
             resources: true
         };
 
-        function initGlobe() {
-            globe = Globe()
-                (document.getElementById('globeViz'))
-                .globeRadius(240)
-                .backgroundColor('#0d0d0d')
-                .showAtmosphere(true)
-                .atmosphereColor('#1a1a2e')
-                .atmosphereAltitude(0.15)
-                .htmlDataSource('')
-                .onZoom(zoomHandler);
+        function initMap() {
+            map = L.map('map', {
+                center: [20, 20],
+                zoom: 2,
+                minZoom: 2,
+                maxZoom: 8,
+                worldCopyJump: true,
+                maxBounds: [[-85, -180], [85, 180]],
+                maxBoundsViscosity: 1.0
+            });
 
-            // Auto-rotate
-            globe.controls().autoRotate = true;
-            globe.controls().autoRotateSpeed = 0.3;
-            globe.controls().enableDamping = true;
-            globe.controls().dampingFactor = 0.1;
-            globe.controls().minDistance = 150;
-            globe.controls().maxDistance = 600;
+            // Dark Carto basemap
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+                subdomains: 'abcd',
+                maxZoom: 19
+            }).addTo(map);
 
-            // Add data after globe loads
-            setTimeout(() => {
-                addChokepoints();
-                addResourceZones();
-                addShippingRoutes();
-                
-                // Hide loading screen
-                document.getElementById('loadingScreen').classList.add('hidden');
-            }, 1500);
+            // Add layers
+            addChokepoints();
+            addResourceZones();
+            addShippingRoutes();
         }
 
-        function zoomHandler() {
-            const distance = globe.controls().getDistance();
-            if (distance < 180) {
-                // Zoomed in - could flatten globe slightly here
-            }
-        }
-
-        // ==================== ADD LAYERS ====================
+        // ==================== LAYER FUNCTIONS ====================
         function addChokepoints() {
             if (!layersVisible.chokepoints) return;
 
-            const chokepointData = chokepoints.map(cp => ({
-                lat: cp.lat,
-                lng: cp.lng,
-                name: cp.name,
-                size: 1.2,
-                color: '#FF3D3D',
-                borderColor: '#FF3D3D',
-                borderWidth: 0.5,
-                altitude: 0.02,
-                data: cp
-            }));
+            chokepoints.forEach(cp => {
+                // Create pulsing effect with CSS animation via marker class
+                const marker = L.circleMarker([cp.lat, cp.lng], {
+                    radius: 10,
+                    fillColor: '#FF3D3D',
+                    fillOpacity: 0.9,
+                    color: '#FF3D3D',
+                    weight: 2,
+                    className: 'chokepoint-marker'
+                }).addTo(map);
 
-            globe.addArchs([], {
-                name: 'chokepoint-arcs',
-                resolution: 0
+                marker.bindPopup(generateChokepointPopup(cp));
+                marker.on('click', function(e) {
+                    L.DomEvent.stopPropagation(e);
+                });
+                
+                chokepointMarkers.push(marker);
             });
 
-            globe.addPoints(chokepointData, {
-                name: 'chokepoints',
-                size: 'size',
-                color: 'color',
-                borderColor: 'borderColor',
-                borderWidth: 'borderWidth',
-                altitude: 'altitude',
-                radiusScale: 1,
-                font: 'Inter, sans-serif',
-                fontSize: 10,
-                fontWeight: 500,
-                colorCallback: (color, d) => color,
-                onClick: 'handleChokepointClick',
-                tooltip: (d) => d.name
-            });
+            // Add CSS for pulsing animation
+            const style = document.createElement('style');
+            style.textContent = `
+                .chokepoint-marker {
+                    animation: chokepointPulse 2s ease-in-out infinite;
+                }
+                @keyframes chokepointPulse {
+                    0%, 100% { 
+                        opacity: 1;
+                        box-shadow: 0 0 0 0 rgba(255, 61, 61, 0.4);
+                    }
+                    50% { 
+                        opacity: 0.8;
+                        box-shadow: 0 0 0 8px rgba(255, 61, 61, 0);
+                    }
+                }
+            `;
+            document.head.appendChild(style);
         }
 
         function addResourceZones() {
             if (!layersVisible.resources) return;
 
-            const zoneData = resourceZones.map(z => ({
-                lat: z.lat,
-                lng: z.lng,
-                name: z.name,
-                size: 0.8,
-                color: z.color,
-                borderColor: z.color,
-                borderWidth: 0.3,
-                altitude: 0.01,
-                data: z
-            }));
+            resourceZones.forEach(zone => {
+                const marker = L.circleMarker([zone.lat, zone.lng], {
+                    radius: 7,
+                    fillColor: zone.color,
+                    fillOpacity: 0.8,
+                    color: zone.color,
+                    weight: 1.5
+                }).addTo(map);
 
-            globe.addPoints(zoneData, {
-                name: 'resources',
-                size: 'size',
-                color: 'color',
-                borderColor: 'borderColor',
-                borderWidth: 'borderWidth',
-                altitude: 'altitude',
-                radiusScale: 1,
-                font: 'Inter, sans-serif',
-                fontSize: 9,
-                fontWeight: 400,
-                colorCallback: (color, d) => color,
-                onClick: 'handleZoneClick',
-                tooltip: (d) => d.name
+                marker.bindPopup(generateZonePopup(zone));
+                marker.on('click', function(e) {
+                    L.DomEvent.stopPropagation(e);
+                });
+                
+                resourceMarkers.push(marker);
             });
         }
 
         function addShippingRoutes() {
             if (!layersVisible.routes) return;
 
-            const routeArcs = shippingRoutes.map(r => ({
-                startLat: r.srcLat,
-                startLng: r.srcLng,
-                endLat: r.dstLat,
-                endLng: r.dstLng,
-                color: r.color,
-                stroke: 0.8,
-                altitude: 0.2,
-                data: r
-            }));
+            shippingRoutes.forEach(route => {
+                // Handle routes with altDst for curved paths
+                let latlngs;
+                if (route.altDstLat && route.altDstLng) {
+                    latlngs = [
+                        [route.srcLat, route.srcLng],
+                        [(route.srcLat + route.dstLat) / 2, (route.srcLng + route.dstLng) / 2],
+                        [(route.dstLat + route.altDstLat) / 2, (route.dstLng + route.altDstLng) / 2],
+                        [route.altDstLat, route.altDstLng]
+                    ];
+                } else {
+                    latlngs = createCurvedPath(route.srcLat, route.srcLng, route.dstLat, route.dstLng);
+                }
 
-            globe.addArcs(routeArcs, {
-                name: 'routes',
-                arcColor: 'color',
-                stroke: 'stroke',
-                altitude: 'altitude',
-                arcDashLength: 0.3,
-                arcDashGap: 0.15,
-                arcDashAnimateTime: 2000,
-                onClick: 'handleRouteClick'
+                const polyline = L.polyline(latlngs, {
+                    color: route.color,
+                    weight: 2,
+                    opacity: 0.7,
+                    dashArray: route.type === 'bypass' ? '8, 4' : null
+                }).addTo(map);
+
+                polyline.bindPopup(generateRoutePopup(route));
+                polyline.on('click', function(e) {
+                    L.DomEvent.stopPropagation(e);
+                });
+                
+                routeLines.push(polyline);
             });
         }
 
-        // ==================== CLICK HANDLERS ====================
-        window.handleChokepointClick = function(d) {
-            const cp = d.data || d;
-            showInfoCard(
-                cp.name,
-                'Strategic Chokepoint',
-                generateChokepointContent(cp)
-            );
-            globe.controls().autoRotate = false;
-        };
+        // Create curved path between two points
+        function createCurvedPath(lat1, lng1, lat2, lng2) {
+            const steps = 50;
+            const path = [];
+            
+            for (let i = 0; i <= steps; i++) {
+                const t = i / steps;
+                
+                // Simple great circle approximation
+                const lat = lat1 + (lat2 - lat1) * t;
+                const lng = lng1 + (lng2 - lng1) * t;
+                
+                // Add curve based on distance
+                const midLat = (lat1 + lat2) / 2;
+                const curve = Math.sin(t * Math.PI) * 5; // 5 degree curve
+                
+                path.push([lat + curve * (1 - Math.abs(t - 0.5) * 2), lng]);
+            }
+            
+            return path;
+        }
 
-        window.handleZoneClick = function(d) {
-            const zone = d.data || d;
-            showInfoCard(
-                zone.name,
-                zone.type,
-                generateZoneContent(zone)
-            );
-            globe.controls().autoRotate = false;
-        };
-
-        window.handleRouteClick = function(d) {
-            const route = d.data || d;
-            showInfoCard(
-                route.name,
-                route.type.toUpperCase() + ' Route',
-                generateRouteContent(route)
-            );
-            globe.controls().autoRotate = false;
-        };
-
-        function generateChokepointContent(cp) {
-            let statsHtml = '<div class="info-stat-grid">';
+        // ==================== POPUP GENERATORS ====================
+        function generateChokepointPopup(cp) {
+            let statsHtml = '<div class="popup-stat-grid">';
             cp.stats.forEach(s => {
                 statsHtml += `
-                    <div class="info-stat">
-                        <div class="info-stat-label">${s.label}</div>
-                        <div class="info-stat-value">${s.value}</div>
+                    <div class="popup-stat">
+                        <div class="popup-stat-label">${s.label}</div>
+                        <div class="popup-stat-value">${s.value}</div>
                     </div>
                 `;
             });
             statsHtml += '</div>';
 
             return `
-                ${statsHtml}
-                <div class="info-section">
-                    <div class="info-section-title">Context</div>
-                    <div class="info-section-content">${cp.context}</div>
+                <div class="popup-header">
+                    <div class="popup-title">${cp.name}</div>
+                    <div class="popup-type">Strategic Chokepoint</div>
                 </div>
-                <div class="info-section">
-                    <div class="info-section-title">Key Actors</div>
-                    <div class="info-section-content">${cp.actors}</div>
-                </div>
-                <div class="info-impact">
-                    <div class="info-impact-label">What If It Blocked?</div>
-                    <div class="info-impact-text">${cp.impact}</div>
-                </div>
-                <div class="info-status">
-                    <div class="info-status-label">2026 Status</div>
-                    <div class="info-status-text">${cp.status}</div>
+                <div class="popup-body">
+                    ${statsHtml}
+                    <div class="popup-section">
+                        <div class="popup-section-title">Context</div>
+                        <div class="popup-section-content">${cp.context}</div>
+                    </div>
+                    <div class="popup-section">
+                        <div class="popup-section-title">Key Actors</div>
+                        <div class="popup-section-content">${cp.actors}</div>
+                    </div>
+                    <div class="popup-impact">
+                        <div class="popup-impact-label">What If It Blocked?</div>
+                        <div class="popup-impact-text">${cp.impact}</div>
+                    </div>
+                    <div class="popup-status">
+                        <div class="popup-status-label">2026 Status</div>
+                        <div class="popup-status-text">${cp.status}</div>
+                    </div>
                 </div>
             `;
         }
 
-        function generateZoneContent(zone) {
+        function generateZonePopup(zone) {
             return `
-                <div class="info-stat-grid">
-                    <div class="info-stat">
-                        <div class="info-stat-label">Type</div>
-                        <div class="info-stat-value" style="color: ${zone.color}">${zone.type}</div>
-                    </div>
-                    <div class="info-stat">
-                        <div class="info-stat-label">Production</div>
-                        <div class="info-stat-value">${zone.value}</div>
-                    </div>
+                <div class="popup-header">
+                    <div class="popup-title">${zone.name}</div>
+                    <div class="popup-type" style="color: ${zone.color}">${zone.type}</div>
                 </div>
-                <div class="info-section">
-                    <div class="info-section-title">Details</div>
-                    <div class="info-section-content">${zone.detail}</div>
-                </div>
-                <div class="info-impact warning">
-                    <div class="info-impact-label">Global Impact</div>
-                    <div class="info-impact-text">Click the route arcs to see how this resource flows to global markets.</div>
+                <div class="popup-body">
+                    <div class="popup-stat-grid">
+                        <div class="popup-stat">
+                            <div class="popup-stat-label">Type</div>
+                            <div class="popup-stat-value" style="color: ${zone.color}">${zone.type}</div>
+                        </div>
+                        <div class="popup-stat">
+                            <div class="popup-stat-label">Production</div>
+                            <div class="popup-stat-value">${zone.value}</div>
+                        </div>
+                    </div>
+                    <div class="popup-section">
+                        <div class="popup-section-title">Details</div>
+                        <div class="popup-section-content">${zone.detail}</div>
+                    </div>
+                    <div class="popup-impact warning">
+                        <div class="popup-impact-label">Global Impact</div>
+                        <div class="popup-impact-text">Click the route lines to see how this resource flows to global markets.</div>
+                    </div>
                 </div>
             `;
         }
 
-        function generateRouteContent(route) {
+        function generateRoutePopup(route) {
             return `
-                <div class="info-section">
-                    <div class="info-section-title">What Flows Here</div>
-                    <div class="info-section-content">${route.label}</div>
+                <div class="popup-header">
+                    <div class="popup-title">${route.name}</div>
+                    <div class="popup-type" style="color: ${route.color}">${route.type.toUpperCase()} Route</div>
                 </div>
-                <div class="info-impact warning">
-                    <div class="info-impact-label">Route Type</div>
-                    <div class="info-impact-text">${route.type === 'bypass' ? 'Alternative bypass route when primary routes are disrupted.' : 'Primary shipping lane.'}</div>
-                </div>
-                <div class="info-status">
-                    <div class="info-status-label">Current Flow</div>
-                    <div class="info-status-text">${route.type === 'bypass' ? 'Increased traffic due to Red Sea disruptions.' : 'Operating normally.'}</div>
+                <div class="popup-body">
+                    <div class="popup-section">
+                        <div class="popup-section-title">What Flows Here</div>
+                        <div class="popup-section-content">${route.label}</div>
+                    </div>
+                    <div class="popup-impact ${route.type === 'bypass' ? 'warning' : ''}">
+                        <div class="popup-impact-label">Route Type</div>
+                        <div class="popup-impact-text">${route.type === 'bypass' ? 'Alternative bypass route when primary routes are disrupted.' : 'Primary shipping lane.'}</div>
+                    </div>
+                    <div class="popup-status">
+                        <div class="popup-status-label">Current Flow</div>
+                        <div class="popup-status-text">${route.type === 'bypass' ? 'Increased traffic due to Red Sea disruptions.' : 'Operating normally.'}</div>
+                    </div>
                 </div>
             `;
         }
 
         // ==================== UI CONTROLS ====================
-        function showInfoCard(title, type, content) {
-            document.getElementById('infoCardTitle').textContent = title;
-            document.getElementById('infoCardType').textContent = type;
-            document.getElementById('infoCardBody').innerHTML = content;
-            document.getElementById('infoCard').classList.add('open');
-            document.getElementById('backBtn').classList.add('visible');
-            document.getElementById('headerPanel').classList.remove('visible');
-            closeLegend();
-        }
-
-        function closeInfoCard() {
-            document.getElementById('infoCard').classList.remove('open');
-            document.getElementById('backBtn').classList.remove('visible');
-            document.getElementById('headerPanel').classList.add('visible');
-            globe.controls().autoRotate = true;
-        }
-
         function toggleLegend() {
             const panel = document.getElementById('legendPanel');
+            const toggle = document.getElementById('legendToggle');
             panel.classList.toggle('open');
-        }
-
-        function closeLegend() {
-            document.getElementById('legendPanel').classList.remove('open');
+            toggle.classList.toggle('open');
         }
 
         function toggleLayer(layer) {
@@ -1416,39 +1206,32 @@
             checkbox.classList.toggle('active');
             layersVisible[layer] = checkbox.classList.contains('active');
 
-            // Rebuild globe with new layers
             rebuildLayers();
         }
 
         function rebuildLayers() {
-            // Remove all layers and rebuild
-            globe.svg.selectAll('[name="chokepoints"]').remove();
-            globe.svg.selectAll('[name="resources"]').remove();
-            globe.svg.selectAll('[name="routes"]').remove();
-            globe.svg.selectAll('[name="chokepoint-arcs"]').remove();
+            // Remove all markers and lines
+            chokepointMarkers.forEach(m => map.removeLayer(m));
+            resourceMarkers.forEach(m => map.removeLayer(m));
+            routeLines.forEach(l => map.removeLayer(l));
+            
+            chokepointMarkers = [];
+            resourceMarkers = [];
+            routeLines = [];
 
+            // Rebuild based on visibility
             if (layersVisible.chokepoints) addChokepoints();
             if (layersVisible.resources) addResourceZones();
             if (layersVisible.routes) addShippingRoutes();
         }
 
-        function zoomIn() {
-            const controls = globe.controls();
-            controls.dollyIn(1.5);
-        }
-
-        function zoomOut() {
-            const controls = globe.controls();
-            controls.dollyOut(1.5);
-        }
-
-        function resetView() {
-            globe.pointOfView({ lat: 20, lng: 60, altitude: 2.5 });
-            globe.controls().autoRotate = true;
-        }
+        // Close popups when clicking on map
+        map.on('click', function() {
+            map.closePopup();
+        });
 
         // ==================== INITIALIZE ====================
-        window.addEventListener('DOMContentLoaded', initGlobe);
+        document.addEventListener('DOMContentLoaded', initMap);
     </script>
 </body>
 </html>

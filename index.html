@@ -1,1237 +1,764 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Global Resource Flows — Strategic Trade Intelligence</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        :root {
-            --bg-primary: #0d0d0d;
-            --bg-panel: rgba(20, 20, 20, 0.95);
-            --accent: #FF6600;
-            --accent-dim: rgba(255, 102, 0, 0.15);
-            --text-primary: #e8e8e8;
-            --text-secondary: #A0A0A0;
-            --text-muted: #606060;
-            --border: #333333;
-            --oil: #FF6600;
-            --lng: #00B4FF;
-            --gas: #00B4FF;
-            --grain: #8BC34A;
-            --minerals: #FFD700;
-            --goods: #90A4AE;
-            --bypass: #607D8B;
-            --chokepoint: #FF3D3D;
-        }
-
-        html, body {
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            background: var(--bg-primary);
-            font-family: Arial, sans-serif;
-            color: var(--text-primary);
-        }
-
-        #map {
-            width: 100%;
-            height: 100%;
-            background: var(--bg-primary);
-        }
-
-        /* Header Panel */
-        .header-panel {
-            position: fixed;
-            top: 16px;
-            left: 16px;
-            z-index: 1000;
-            background: var(--bg-panel);
-            border: 1px solid var(--border);
-            padding: 14px 18px;
-            min-width: 200px;
-        }
-
-        .header-title {
-            font-size: 12px;
-            font-weight: 600;
-            color: var(--accent);
-            letter-spacing: 0.5px;
-            margin-bottom: 4px;
-        }
-
-        .header-subtitle {
-            font-size: 9px;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 10px;
-            padding-bottom: 8px;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .header-stat {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 5px;
-            font-size: 10px;
-        }
-
-        .header-stat-label {
-            color: var(--text-secondary);
-        }
-
-        .header-stat-value {
-            color: var(--text-primary);
-            font-family: 'Courier New', monospace;
-            font-weight: 500;
-        }
-
-        /* Layer Toggle - Top Right */
-        .layer-toggle {
-            position: fixed;
-            top: 16px;
-            right: 16px;
-            z-index: 1000;
-            background: var(--bg-panel);
-            border: 1px solid var(--border);
-            padding: 12px 14px;
-            min-width: 140px;
-        }
-
-        .layer-toggle-title {
-            font-size: 9px;
-            font-weight: 600;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-            margin-bottom: 10px;
-        }
-
-        .layer-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 8px;
-            cursor: pointer;
-            padding: 6px 0;
-            min-height: 44px;
-        }
-
-        .layer-item:last-child {
-            margin-bottom: 0;
-        }
-
-        .layer-checkbox {
-            width: 20px;
-            height: 20px;
-            border: 1.5px solid var(--border);
-            background: transparent;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 12px;
-            color: var(--bg-primary);
-            flex-shrink: 0;
-        }
-
-        .layer-checkbox.active {
-            background: var(--accent);
-            border-color: var(--accent);
-        }
-
-        .layer-label {
-            font-size: 11px;
-            color: var(--text-secondary);
-            cursor: pointer;
-        }
-
-        .layer-item:hover .layer-label {
-            color: var(--text-primary);
-        }
-
-        /* Legend Toggle - Bottom Center */
-        .legend-toggle {
-            position: fixed;
-            bottom: 16px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 1001;
-            background: var(--bg-panel);
-            border: 1px solid var(--border);
-            padding: 12px 24px;
-            font-size: 11px;
-            font-weight: 500;
-            color: var(--text-primary);
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            min-height: 48px;
-            min-width: 140px;
-            justify-content: center;
-        }
-
-        .legend-toggle:hover, .legend-toggle:active {
-            background: rgba(30, 30, 30, 0.95);
-            border-color: var(--accent);
-        }
-
-        .legend-toggle svg {
-            width: 16px;
-            height: 16px;
-            stroke: var(--accent);
-            transition: transform 0.3s ease;
-        }
-
-        .legend-toggle.open svg {
-            transform: rotate(180deg);
-        }
-
-        /* Legend Panel - Bottom Sheet */
-        .legend-panel {
-            position: fixed;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            z-index: 1000;
-            background: var(--bg-panel);
-            border-top: 1px solid var(--border);
-            transform: translateY(100%);
-            transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-            max-height: 60vh;
-            overflow-y: auto;
-        }
-
-        .legend-panel.open {
-            transform: translateY(0);
-        }
-
-        .legend-content {
-            padding: 16px 18px 24px;
-        }
-
-        .legend-section {
-            margin-bottom: 16px;
-        }
-
-        .legend-section:last-child {
-            margin-bottom: 0;
-        }
-
-        .legend-section-title {
-            font-size: 9px;
-            font-weight: 600;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-            margin-bottom: 10px;
-        }
-
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 8px;
-            font-size: 11px;
-            color: var(--text-secondary);
-            cursor: pointer;
-            padding: 6px 0;
-            min-height: 44px;
-        }
-
-        .legend-dot {
-            width: 14px;
-            height: 14px;
-            border-radius: 50%;
-            flex-shrink: 0;
-            border: 2px solid transparent;
-        }
-
-        .legend-dot.chokepoint {
-            background: var(--chokepoint);
-            box-shadow: 0 0 8px var(--chokepoint);
-            animation: pulse 2s ease-in-out infinite;
-        }
-
-        .legend-dot.oil { background: var(--oil); }
-        .legend-dot.lng { background: var(--lng); }
-        .legend-dot.grain { background: var(--grain); }
-        .legend-dot.minerals { background: var(--minerals); }
-        .legend-dot.goods { background: var(--goods); }
-
-        .legend-line {
-            width: 30px;
-            height: 3px;
-            border-radius: 2px;
-            flex-shrink: 0;
-        }
-
-        .legend-line.oil { background: var(--oil); }
-        .legend-line.lng { background: var(--lng); }
-        .legend-line.gas { background: var(--gas); }
-        .legend-line.grain { background: var(--grain); }
-        .legend-line.minerals { background: var(--minerals); }
-        .legend-line.goods { background: var(--goods); }
-        .legend-line.bypass { background: var(--bypass); }
-
-        .legend-divider {
-            height: 1px;
-            background: var(--border);
-            margin: 14px 0;
-        }
-
-        /* Popup Styling */
-        .leaflet-popup-content-wrapper {
-            background: var(--bg-panel);
-            border: 1px solid var(--border);
-            border-radius: 0;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-        }
-
-        .leaflet-popup-content {
-            margin: 0;
-            padding: 0;
-            color: var(--text-primary);
-            font-family: Arial, sans-serif;
-            min-width: 260px;
-            max-width: 340px;
-        }
-
-        .leaflet-popup-tip {
-            background: var(--bg-panel);
-            border: 1px solid var(--border);
-        }
-
-        .leaflet-popup-close-button {
-            color: var(--text-secondary) !important;
-            font-size: 20px !important;
-            padding: 8px 10px !important;
-            min-width: 44px;
-            min-height: 44px;
-            display: flex !important;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .leaflet-popup-close-button:hover {
-            color: var(--text-primary) !important;
-            background: rgba(40, 40, 40, 0.95);
-        }
-
-        /* Popup Content Styling */
-        .popup-header {
-            padding: 12px 14px 10px;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .popup-title {
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 2px;
-        }
-
-        .popup-type {
-            font-size: 9px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color: var(--accent);
-            font-weight: 600;
-        }
-
-        .popup-body {
-            padding: 12px 14px 14px;
-        }
-
-        .popup-stat-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-            gap: 8px;
-            margin-bottom: 12px;
-        }
-
-        .popup-stat {
-            background: rgba(30, 30, 30, 0.8);
-            border: 1px solid var(--border);
-            padding: 8px 10px;
-        }
-
-        .popup-stat-label {
-            font-size: 9px;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 3px;
-        }
-
-        .popup-stat-value {
-            font-family: 'Courier New', monospace;
-            font-size: 12px;
-            font-weight: 600;
-            color: var(--accent);
-        }
-
-        .popup-section {
-            margin-bottom: 10px;
-        }
-
-        .popup-section:last-child {
-            margin-bottom: 0;
-        }
-
-        .popup-section-title {
-            font-size: 9px;
-            font-weight: 600;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 4px;
-        }
-
-        .popup-section-content {
-            font-size: 11px;
-            color: var(--text-secondary);
-            line-height: 1.5;
-        }
-
-        .popup-impact {
-            background: rgba(255, 61, 61, 0.1);
-            border: 1px solid rgba(255, 61, 61, 0.3);
-            border-left: 3px solid var(--chokepoint);
-            padding: 10px 12px;
-            margin: 10px 0;
-        }
-
-        .popup-impact.warning {
-            background: rgba(255, 102, 0, 0.1);
-            border-color: rgba(255, 102, 0, 0.3);
-            border-left-color: var(--accent);
-        }
-
-        .popup-impact-label {
-            font-size: 9px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: var(--chokepoint);
-            margin-bottom: 3px;
-        }
-
-        .popup-impact.warning .popup-impact-label {
-            color: var(--accent);
-        }
-
-        .popup-impact-text {
-            font-size: 11px;
-            color: var(--text-primary);
-            line-height: 1.4;
-        }
-
-        .popup-status {
-            background: rgba(0, 180, 255, 0.08);
-            border: 1px solid rgba(0, 180, 255, 0.2);
-            padding: 8px 10px;
-            margin-top: 10px;
-        }
-
-        .popup-status-label {
-            font-size: 9px;
-            font-weight: 600;
-            color: var(--lng);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 3px;
-        }
-
-        .popup-status-text {
-            font-size: 10px;
-            color: var(--text-secondary);
-            line-height: 1.4;
-        }
-
-        /* Zoom Controls */
-        .zoom-controls {
-            position: fixed;
-            right: 16px;
-            bottom: 80px;
-            z-index: 1000;
-            display: flex;
-            flex-direction: column;
-            gap: 1px;
-        }
-
-        .zoom-btn {
-            width: 44px;
-            height: 44px;
-            background: var(--bg-panel);
-            border: 1px solid var(--border);
-            color: var(--text-primary);
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s ease;
-        }
-
-        .zoom-btn:first-child {
-            border-radius: 6px 6px 0 0;
-        }
-
-        .zoom-btn:last-child {
-            border-radius: 0 0 6px 6px;
-        }
-
-        .zoom-btn:hover, .zoom-btn:active {
-            background: rgba(30, 30, 30, 0.95);
-            border-color: var(--accent);
-            color: var(--accent);
-        }
-
-        .zoom-btn svg {
-            width: 20px;
-            height: 20px;
-        }
-
-        /* Pulsing animation for chokepoints */
-        @keyframes pulse {
-            0%, 100% { 
-                opacity: 1;
-                box-shadow: 0 0 0 0 rgba(255, 61, 61, 0.4);
-            }
-            50% { 
-                opacity: 0.8;
-                box-shadow: 0 0 0 8px rgba(255, 61, 61, 0);
-            }
-        }
-
-        /* Scrollbar styling */
-        ::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: var(--bg-primary);
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: var(--border);
-            border-radius: 3px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: var(--text-muted);
-        }
-
-        /* Mobile breakpoints */
-        @media (max-width: 640px) {
-            .header-panel {
-                top: 8px;
-                left: 8px;
-                right: 8px;
-                min-width: auto;
-                padding: 10px 12px;
-            }
-
-            .header-title {
-                font-size: 11px;
-            }
-
-            .layer-toggle {
-                top: auto;
-                bottom: 80px;
-                right: 8px;
-                padding: 10px 12px;
-                min-width: auto;
-            }
-
-            .layer-toggle-title {
-                display: none;
-            }
-
-            .layer-label {
-                font-size: 10px;
-            }
-
-            .zoom-controls {
-                right: 8px;
-                bottom: 80px;
-            }
-
-            .legend-toggle {
-                bottom: 8px;
-                min-width: 120px;
-                padding: 10px 20px;
-            }
-
-            .popup-stat-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-
-            .leaflet-popup-content {
-                min-width: 240px;
-                max-width: 300px;
-            }
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+<title>World Resource Map</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --bg: #0d0d0d;
+  --panel: rgba(20,20,20,0.95);
+  --border: #333;
+  --accent: #FF6600;
+  --text: #ffffff;
+  --text-sec: #A0A0A0;
+  --oil: #FF6600;
+  --lng: #00AAFF;
+  --minerals: #FFD700;
+  --agri: #00CC66;
+  --route-oil: rgba(255,102,0,0.5);
+  --route-lng: rgba(0,170,255,0.5);
+  --route-minerals: rgba(255,215,0,0.5);
+  --route-agri: rgba(0,204,102,0.5);
+}
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: Arial, sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+.header {
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.header h1 {
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  color: var(--accent);
+  letter-spacing: 2px;
+}
+.header span {
+  font-family: 'Courier New', monospace;
+  font-size: 10px;
+  color: var(--text-sec);
+}
+.controls {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 8px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+}
+.btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-sec);
+  padding: 6px 10px;
+  font-size: 10px;
+  font-family: 'Courier New', monospace;
+  cursor: pointer;
+  transition: all 0.2s;
+  border-radius: 2px;
+  min-height: 44px;
+  min-width: 44px;
+}
+.btn:hover, .btn.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(255,102,0,0.1);
+}
+.zoom-controls {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+.btn-zoom {
+  width: 44px;
+  height: 44px;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.map-container {
+  width: 100%;
+  overflow: hidden;
+  position: relative;
+}
+#map {
+  display: block;
+  width: 100%;
+  height: auto;
+  min-height: 50vh;
+}
+.continent { fill: #1a1a1a; stroke: #333; stroke-width: 0.5; }
+.country { fill: #222; stroke: #2a2a2a; stroke-width: 0.3; }
+.ocean { fill: #0a0a0a; }
+.chokepoint {
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+.chokepoint:hover { transform: scale(1.3); }
+.chokepoint-pulse {
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0% { opacity: 0.8; }
+  50% { opacity: 0.3; }
+  100% { opacity: 0.8; }
+}
+.resource-zone { cursor: pointer; transition: transform 0.2s; }
+.resource-zone:hover { transform: scale(1.2); }
+.route { pointer-events: stroke; cursor: pointer; }
+.route:hover { stroke-width: 3; }
+.popup-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 200;
+}
+.popup {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--panel);
+  border: 1px solid var(--accent);
+  border-radius: 8px 8px 0 0;
+  padding: 15px;
+  z-index: 201;
+  max-height: 70vh;
+  overflow-y: auto;
+  animation: slideUp 0.3s ease;
+}
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+.popup-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-sec);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.popup-close:hover { border-color: var(--accent); color: var(--accent); }
+.popup h2 {
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  color: var(--accent);
+  margin-bottom: 10px;
+  padding-right: 40px;
+}
+.popup-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+.popup-row:last-child { border-bottom: none; }
+.popup-label { color: var(--text-sec); font-family: 'Courier New', monospace; }
+.popup-value { color: var(--text); font-family: 'Courier New', monospace; text-align: right; }
+.popup-section {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.popup-section h3 {
+  font-size: 11px;
+  color: var(--accent);
+  margin-bottom: 8px;
+  font-family: 'Courier New', monospace;
+}
+.legend {
+  background: var(--panel);
+  border-top: 1px solid var(--border);
+  padding: 12px;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+}
+.legend-toggle {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  padding-bottom: 8px;
+}
+.legend-toggle h3 {
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  color: var(--text-sec);
+}
+.legend-toggle span { color: var(--text-sec); font-size: 12px; }
+.legend-items {
+  display: none;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-top: 8px;
+}
+.legend-items.show { display: flex; }
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-sec);
+}
+.legend-circle {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+.legend-line {
+  width: 24px;
+  height: 3px;
+  border-radius: 2px;
+}
+.legend-pulse {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: pulse 2s infinite;
+}
+@media (min-width: 768px) {
+  .popup {
+    top: 50%;
+    left: 50%;
+    bottom: auto;
+    transform: translate(-50%, -50%);
+    max-width: 400px;
+    border-radius: 8px;
+  }
+  .legend {
+    position: relative;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    margin: 10px;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .map-container { padding-bottom: 80px; }
+}
+</style>
 </head>
 <body>
-    <!-- Map Container -->
-    <div id="map"></div>
-
-    <!-- Header Panel -->
-    <div class="header-panel">
-        <div class="header-title">GLOBAL RESOURCE FLOWS</div>
-        <div class="header-subtitle">Strategic Trade Intelligence</div>
-        <div class="header-stat">
-            <span class="header-stat-label">Chokepoints</span>
-            <span class="header-stat-value">12</span>
-        </div>
-        <div class="header-stat">
-            <span class="header-stat-label">Resource Zones</span>
-            <span class="header-stat-value">24</span>
-        </div>
-        <div class="header-stat">
-            <span class="header-stat-label">Active Routes</span>
-            <span class="header-stat-value">18</span>
-        </div>
-    </div>
-
-    <!-- Layer Toggle -->
-    <div class="layer-toggle">
-        <div class="layer-toggle-title">Layers</div>
-        <div class="layer-item" onclick="toggleLayer('routes')">
-            <div class="layer-checkbox active" id="check-routes">✓</div>
-            <div class="layer-label">Routes</div>
-        </div>
-        <div class="layer-item" onclick="toggleLayer('chokepoints')">
-            <div class="layer-checkbox active" id="check-chokepoints">✓</div>
-            <div class="layer-label">Chokepoints</div>
-        </div>
-        <div class="layer-item" onclick="toggleLayer('resources')">
-            <div class="layer-checkbox active" id="check-resources">✓</div>
-            <div class="layer-label">Resources</div>
-        </div>
-    </div>
-
-    <!-- Legend Panel -->
-    <div class="legend-panel" id="legendPanel">
-        <div class="legend-content">
-            <div class="legend-section">
-                <div class="legend-section-title">Routes</div>
-                <div class="legend-item">
-                    <div class="legend-line oil"></div>
-                    <span>Oil & Petroleum</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-line lng"></div>
-                    <span>LNG Shipping</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-line gas"></div>
-                    <span>Gas Pipelines</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-line grain"></div>
-                    <span>Grain & Agriculture</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-line minerals"></div>
-                    <span>Minerals & Rare Earth</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-line goods"></div>
-                    <span>General Goods</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-line bypass"></div>
-                    <span>Bypass Routes</span>
-                </div>
-            </div>
-            <div class="legend-divider"></div>
-            <div class="legend-section">
-                <div class="legend-section-title">Markers</div>
-                <div class="legend-item">
-                    <div class="legend-dot chokepoint"></div>
-                    <span>Critical Chokepoint</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-dot oil"></div>
-                    <span>Oil Extraction</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-dot lng"></div>
-                    <span>LNG Export</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-dot grain"></div>
-                    <span>Agriculture</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-dot minerals"></div>
-                    <span>Rare Earths / Minerals</span>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Legend Toggle -->
-    <button class="legend-toggle" id="legendToggle" onclick="toggleLegend()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 5v14M5 12h14"/>
-        </svg>
-        <span>Legend</span>
-    </button>
-
-    <!-- Zoom Controls -->
-    <div class="zoom-controls">
-        <button class="zoom-btn" onclick="map.zoomIn()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12 5v14M5 12h14"/>
-            </svg>
-        </button>
-        <button class="zoom-btn" onclick="map.zoomOut()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M5 12h14"/>
-            </svg>
-        </button>
-        <button class="zoom-btn" onclick="map.setView([20, 20], 2)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="3"/>
-                <path d="M12 2v4M12 18v4M2 12h4M18 12h4"/>
-            </svg>
-        </button>
-    </div>
-
-    <script>
-        // ==================== DATA ====================
-        
-        // Chokepoints Data
-        const chokepoints = [
-            {
-                name: "Strait of Hormuz",
-                lat: 26.5, lng: 56.3,
-                stats: [
-                    { label: "World Oil Flow", value: "20%" },
-                    { label: "Daily Volume", value: "21M bbl/day" },
-                    { label: "Global LNG", value: "20%" }
-                ],
-                context: "Between Iran (north) and UAE/Oman (south). The world's most critical oil chokepoint. Controls access from Persian Gulf to Gulf of Oman.",
-                actors: "Iran controls northern shore. UAE/Oman control southern approaches. US Navy maintains presence.",
-                impact: "Oil jumps $20-40/barrel within days. Asia loses primary oil supply. Global recession risk spikes.",
-                status: "2026: Houthi threats in Red Sea have increased Gulf traffic. Iran tensions elevated."
-            },
-            {
-                name: "Strait of Malacca",
-                lat: 2.5, lng: 101.5,
-                stats: [
-                    { label: "Global Trade", value: "25%" },
-                    { label: "Vessels/Year", value: "~90,000" },
-                    { label: "Alt. Route", value: "+2 weeks" }
-                ],
-                context: "Connects Indian Ocean to Pacific. Main artery for China, Japan, Korea oil and goods from Middle East and Africa.",
-                actors: "Indonesia, Malaysia, Singapore patrol waters. Major piracy concerns.",
-                impact: "Asia industrial economies halt. China receives 70% of imported oil via Malacca. Supply chain collapse within weeks.",
-                status: "Flowing normally. Pirate activity in nearby waters requires escort protocols."
-            },
-            {
-                name: "Suez Canal",
-                lat: 30.5, lng: 32.3,
-                stats: [
-                    { label: "Global Trade", value: "12%" },
-                    { label: "Daily Value", value: "$9-10B" },
-                    { label: "Time Saved", value: "2 weeks" }
-                ],
-                context: "March 2021: Ever Given ran aground for 6 days. $9.6B/day of goods delayed. COVID supply chain already strained.",
-                actors: "Egypt controls canal. Largest ships (New Panamax) cannot fully transit.",
-                impact: "Europe-Asia trade adds 2 weeks via Cape. JIT inventory systems break down. Consumer goods shortage.",
-                status: "2026: Operating normally. Red Sea concerns have diverted some traffic to Cape route."
-            },
-            {
-                name: "Panama Canal",
-                lat: 9.0, lng: -79.7,
-                stats: [
-                    { label: "Global Trade", value: "5%" },
-                    { label: "Time Saved", value: "2-3 weeks" },
-                    { label: "Vessels/Year", value: "~14,000" }
-                ],
-                context: "2023-2024: Severe drought cut water levels. New Panamax locks require freshwater lakes. Wait times exceeded 2 weeks.",
-                actors: "Panama controls canal. US, China largest users.",
-                impact: "US-Chile trade, US LNG exports to Asia slowed. $1-2M premium to bypass via Cape.",
-                status: "2026: Water levels recovering but restrictions remain. Cape traffic increasing as permanent hedge."
-            },
-            {
-                name: "Bab-el-Mandeb",
-                lat: 12.6, lng: 43.3,
-                stats: [
-                    { label: "EU LNG Imports", value: "30%" },
-                    { label: "Global Trade", value: "20%" },
-                    { label: "Width", value: "18 miles" }
-                ],
-                context: "2024: Houthi rebels attacking commercial vessels. Major lines (Maersk, MSC) suspended Red Sea transits. Thousands forced to Cape.",
-                actors: "Yemen (Houthis) control western shore. Djibouti, Eritrea eastern shore.",
-                impact: "EU energy security threatened. LNG prices spike. US LNG adds 2 weeks +$1M/voyage to Europe.",
-                status: "2026: Houthi threats ongoing. Most container lines continue Cape bypass. LNG with escorts."
-            },
-            {
-                name: "Danish Straits",
-                lat: 57.5, lng: 11.0,
-                stats: [
-                    { label: "Russian Gas", value: "Key Route" },
-                    { label: "Straits", value: "Skagerrak/Kattegat" },
-                    { label: "Baltic Access", value: "Deepwater" }
-                ],
-                context: "Before 2022: Russian gas via Ukraine, Belarus, Baltic. Nord Stream destroyed 2022.",
-                actors: "Denmark, Sweden, Norway jurisdiction. Baltic Pipeline (Norway-Poland) opened 2023.",
-                impact: "Denmark can control Baltic gas flows. Less critical as Russian gas cut off.",
-                status: "2026: Norwegian gas flowing. Russian gas minimal. Baltic Pipeline reducing dependency."
-            },
-            {
-                name: "Bosphorus",
-                lat: 41.0, lng: 29.0,
-                stats: [
-                    { label: "Black Sea Access", value: "Only Sea Route" },
-                    { label: "Traffic", value: "~45,000/yr" },
-                    { label: "Grain Export", value: "Ukraine" }
-                ],
-                context: "Istanbul Strait + Çanakkale connect Black Sea to Mediterranean. Turkey controls under Montreux Convention.",
-                actors: "Turkey controls transit. Russia and Ukraine both depend on this for grain exports.",
-                impact: "Russia loses naval access. Ukraine cannot export grain. Global wheat prices spike.",
-                status: "2026: Turkey maintaining neutrality. Ukraine using Danube ports. Russian naval presence reduced."
-            },
-            {
-                name: "Gibraltar Strait",
-                lat: 35.9, lng: -5.5,
-                stats: [
-                    { label: "Med Access", value: "Only Deepwater" },
-                    { label: "Traffic", value: "~300/day" },
-                    { label: "Oil Tanker", value: "Med-Refined" }
-                ],
-                context: "Controls Atlantic-Mediterranean access. Critical for European imports from Middle East and Africa.",
-                actors: "Spain, Morocco, UK (Gibraltar) jurisdiction. One of world's busiest shipping lanes.",
-                impact: "Mediterranean economies fully dependent. Closure traps Mediterranean-refined oil.",
-                status: "2026: Operating normally. Morocco-Spain tensions on fishing but not shipping."
-            },
-            {
-                name: "Cape of Good Hope",
-                lat: -34.4, lng: 18.5,
-                stats: [
-                    { label: "Suez Bypass", value: "Default" },
-                    { label: "Time Added", value: "+2 weeks" },
-                    { label: "Distance", value: "11,000 NM" }
-                ],
-                context: "When Suez/Red Sea disrupted, Cape becomes default. 2024 Red Sea crisis sent thousands around Africa.",
-                actors: "South Africa controls approach. Cape Town port infrastructure strained by increased traffic.",
-                impact: "Pressure release valve — no chokepoint can fully strangle trade while Cape remains open.",
-                status: "2026: Traffic surging as Red Sea disrupted. Cape Town port infrastructure strained."
-            },
-            {
-                name: "Taiwan Strait",
-                lat: 24.5, lng: 119.5,
-                stats: [
-                    { label: "Chip Trade", value: "90%+ advanced" },
-                    { label: "China Trade", value: "$800B+/yr" },
-                    { label: "Risk Level", value: "HIGH" }
-                ],
-                context: "Taiwan produces 90%+ of world's advanced semiconductors (below 5nm). TSMC irreplaceable.",
-                actors: "China claims Taiwan. US informal ties. Japan, Korea, US strategic interest in keeping open.",
-                impact: "Blockade: Global semiconductor shortage 100x worse than 2020-2021 chip crisis. Every industry halts.",
-                status: "2026: Tensions elevated. China's military presence increased. US-Taiwan trade with contingency planning."
-            },
-            {
-                name: "Torres Strait",
-                lat: -10.0, lng: 142.0,
-                stats: [
-                    { label: "Australia-Asia", value: "Critical" },
-                    { label: "LNG Carriers", value: "Major Route" },
-                    { label: "Alternative", value: "Sunda (congested)" }
-                ],
-                context: "Torres Strait (shallow) + Lombok for Australian LNG, coal, iron ore to Asian markets.",
-                actors: "Indonesia controls Lombok Strait. Australia-China trade growing.",
-                impact: "If Lombok blocked, Australian exports forced to Sunda or around Australia. Asian energy shortages.",
-                status: "2026: Operating normally. Australia-China relations normalized. Growing as Malacca alternative."
-            },
-            {
-                name: "Lombok Strait",
-                lat: -8.5, lng: 116.0,
-                stats: [
-                    { label: "Aus-Asia Route", value: "Alternative" },
-                    { label: "Depth", value: "Deepwater" },
-                    { label: "Savings", value: "~3 days" }
-                ],
-                context: "Alternative to Lombok for larger vessels. Indonesian controlled. Growing in importance.",
-                actors: "Indonesia controls. Key for Australian exports to Asia.",
-                impact: "If blocked, Australian coal and LNG must use Sunda Strait adding 3+ days.",
-                status: "2026: Operating normally. Strategic alternative to crowded Malacca."
-            }
-        ];
-
-        // Resource Zones Data
-        const resourceZones = [
-            // Oil
-            { name: "Saudi Arabia", lat: 24.0, lng: 45.0, type: "Oil", color: "#FF6600", value: "10M bbl/day", detail: "Ghawar field — world's largest. Kuwait/Iraq Rumaila. 35% of world oil exports." },
-            { name: "Kuwait/Iraq", lat: 30.0, lng: 47.0, type: "Oil", color: "#FF6600", value: "4M bbl/day", detail: "Rumaila, Burgan fields. Second largest concentration after Saudi." },
-            { name: "Iran", lat: 30.0, lng: 53.0, type: "Oil", color: "#FF6600", value: "3.5M bbl/day", detail: "Fourth largest producer. Sanctions limit exports. Controls Hormuz northern shore." },
-            { name: "UAE", lat: 24.0, lng: 54.0, type: "Oil", color: "#FF6600", value: "4M bbl/day", detail: "Abu Dhabi fields. Third largest OPEC producer. Controls Hormuz southern shore." },
-            { name: "Russia West Siberia", lat: 60.0, lng: 75.0, type: "Oil", color: "#FF6600", value: "10M bbl/day", detail: "Samotlar, largest oil field. Second largest oil exporter. Gazprom controls gas." },
-            { name: "Russia Volga/Ural", lat: 55.0, lng: 50.0, type: "Oil", color: "#FF6600", value: "2M bbl/day", detail: "Second largest Russian oil region. Provides-Europe pipeline access." },
-            { name: "US Permian Basin", lat: 31.0, lng: -103.0, type: "Oil", color: "#FF6600", value: "6M bbl/day", detail: "Texas/New Mexico. Largest US shale play. World's largest oil producer since 2018." },
-            { name: "US Bakken", lat: 47.0, lng: -103.0, type: "Oil", color: "#FF6600", value: "1.2M bbl/day", detail: "North Dakota. Light sweet crude. Pipeline to Midwest and Gulf Coast." },
-            { name: "Venezuela Orinoco", lat: 7.5, lng: -65.0, type: "Oil", color: "#FF6600", value: "3M bbl/day", detail: "Largest proven reserves (~300B bbl). Heavy oil requires upgrading. US sanctions limit exports." },
-            { name: "Nigeria Delta", lat: 5.0, lng: 6.0, type: "Oil", color: "#FF6600", value: "2M bbl/day", detail: "Africa's largest producer. Bonny Light high-quality crude. Offshore deepwater growing." },
-            { name: "Brazil Pre-Salt", lat: -27.0, lng: -42.0, type: "Oil", color: "#FF6600", value: "3.5M bbl/day", detail: "Santos Basin. Lula, Buzios fields. Transformational for Brazil. Petrobras monopoly." },
-            { name: "UK/North Sea", lat: 58.0, lng: 2.0, type: "Oil & Gas", color: "#00B4FF", value: "2M bbl/day", detail: "Norway/UK. Ekofisk, Brent, Forties. Norway now Europe's largest gas exporter." },
-            
-            // LNG/Gas
-            { name: "Qatar North Dome", lat: 25.5, lng: 51.0, type: "LNG", color: "#00B4FF", value: "77M tonnes/yr", detail: "World's largest LNG exporter. Qatargas, RasGas. Key supplier to Asia and Europe." },
-            { name: "Australia NW Shelf", lat: -21.0, lng: 115.0, type: "LNG", color: "#00B4FF", value: "60M tonnes/yr", detail: "Pilbara operations. Gorgon, Ichthys. Second largest LNG exporter. Key to Japan, China." },
-            { name: "US Gulf Coast", lat: 28.5, lng: -91.0, type: "LNG", color: "#00B4FF", value: "12B cf/day", detail: "Sabine Pass, Corpus Christi, Freeport. World's largest LNG exporter since 2023." },
-            { name: "Russia Yamal", lat: 70.0, lng: 68.0, type: "LNG", color: "#00B4FF", value: "18M tonnes/yr", detail: "Arctic LNG. Novatek operating. Sanctions complicating but still flowing to Asia." },
-            
-            // Minerals
-            { name: "Chile Atacama", lat: -24.0, lng: -69.0, type: "Lithium", color: "#FFD700", value: "40% supply", detail: "Atacama brine. SQM, Albemarle. World's largest lithium. Chile nationalizing sector." },
-            { name: "Congo Cobalt", lat: -7.0, lng: 27.0, type: "Cobalt", color: "#FFD700", value: "70% supply", detail: "Katanga Copperbelt. 70% of world cobalt. China dominates processing." },
-            { name: "China Rare Earths", lat: 41.0, lng: 110.0, type: "Rare Earths", color: "#FFD700", value: "60% production", detail: "Inner Mongolia (Bayan Obo), Jiangxi. Processing dominance even greater than production." },
-            { name: "Indonesia Nickel", lat: 0.5, lng: 122.0, type: "Nickel", color: "#FFD700", value: "40% supply", detail: "Sulawesi, Halmahera. World's largest producer since 2022. China investing heavily." },
-            { name: "South Africa PGM", lat: -25.0, lng: 28.0, type: "PGM", color: "#FFD700", value: "70% platinum", detail: "Bushveld Complex. Platinum, palladium, rhodium. Critical for catalytic converters." },
-            
-            // Agriculture
-            { name: "Ukraine Corridor", lat: 48.0, lng: 32.0, type: "Grain", color: "#8BC34A", value: "10% wheat", detail: "Black Sea region. World's breadbasket. War disrupted but exports via Danube continuing." },
-            { name: "US Midwest", lat: 41.0, lng: -93.0, type: "Grain", color: "#8BC34A", value: "30% exports", detail: "Iowa, Illinois, Nebraska. Corn belt. World's largest corn exporter. Second largest wheat." },
-            { name: "Brazil Soy", lat: -10.0, lng: -55.0, type: "Soy", color: "#8BC34A", value: "50% exports", detail: "Mato Grosso, Parana. World's largest soy exporter. China buys 60%." },
-            { name: "Argentina Soy", lat: -33.0, lng: -64.0, type: "Soy", color: "#8BC34A", value: "15% soy", detail: "Pampas region. Third largest soy exporter. Lithium triangle with Chile." }
-        ];
-
-        // Shipping Routes Data
-        const shippingRoutes = [
-            // Gulf to Asia (Oil)
-            { name: "Gulf → Asia", srcLat: 26.0, srcLng: 52.0, dstLat: 25.0, dstLng: 121.0, color: "#FF6600", type: "oil", label: "Oil: 15M+ bbl/day to Asia" },
-            // Gulf to Europe via Suez
-            { name: "Gulf → Europe via Suez", srcLat: 26.0, srcLng: 52.0, dstLat: 36.0, dstLng: -5.0, color: "#FF6600", type: "oil", label: "Oil: Gulf to Mediterranean" },
-            // Gulf bypass via Cape
-            { name: "Gulf → Cape → Europe", srcLat: 26.0, srcLng: 52.0, dstLat: -34.0, dstLng: 18.5, color: "#607D8B", type: "bypass", label: "Bypass: +2 weeks to Europe" },
-            // Russia to Europe
-            { name: "Russia → Europe", srcLat: 65.0, srcLng: 40.0, dstLat: 54.0, dstLng: 8.0, color: "#00B4FF", type: "gas", label: "Gas: Norway/Russia to Europe" },
-            // US to Asia via Panama
-            { name: "US → Panama → Asia", srcLat: 28.0, srcLng: -92.0, dstLat: 25.0, dstLng: 121.0, color: "#00B4FF", type: "lng", label: "LNG & Grain: US to Asia" },
-            // US bypass Cape
-            { name: "US → Cape → Asia", srcLat: 28.0, srcLng: -92.0, dstLat: -34.0, dstLng: 18.5, color: "#607D8B", type: "bypass", label: "Bypass: US LNG to Asia" },
-            // Australia to China
-            { name: "Australia → China", srcLat: -22.0, srcLng: 117.0, dstLat: 25.0, dstLng: 121.0, color: "#90A4AE", type: "goods", label: "Iron Ore, Coal, LNG: Australia to China" },
-            // Brazil to China
-            { name: "Brazil → Cape → China", srcLat: -23.0, srcLng: -42.0, dstLat: -34.0, dstLng: 18.5, color: "#8BC34A", type: "grain", label: "Soy & Iron Ore: Brazil to China" },
-            // Argentina to China
-            { name: "Argentina → Cape → China", srcLat: -35.0, srcLng: -58.0, dstLat: -34.0, dstLng: 18.5, color: "#8BC34A", type: "grain", label: "Soy & Beef: Argentina to China" },
-            // Ukraine grain
-            { name: "Ukraine → Black Sea", srcLat: 46.0, srcLng: 32.0, dstLat: 35.0, dstLng: 30.0, color: "#8BC34A", type: "grain", label: "Grain: Ukraine to World" },
-            // Canada to Asia
-            { name: "Canada → Panama → Asia", srcLat: 50.0, srcLng: -126.0, dstLat: 25.0, dstLng: 121.0, color: "#8BC34A", type: "grain", label: "Wheat & Potash: Canada to Asia" },
-            // Chile to Asia
-            { name: "Chile → Panama → Asia", srcLat: -33.0, srcLng: -71.0, dstLat: 25.0, dstLng: 121.0, color: "#FFD700", type: "minerals", label: "Copper & Lithium: Chile to Asia" },
-            // Saudi to Europe via Red Sea
-            { name: "Saudi → Red Sea → Europe", srcLat: 22.0, srcLng: 50.0, dstLat: 30.5, dstLng: 32.3, color: "#FF6600", type: "oil", label: "Oil: Saudi to Europe via Red Sea" },
-            // Norway to Europe
-            { name: "Norway → Europe", srcLat: 62.0, srcLng: 6.0, dstLat: 54.0, dstLng: 8.0, color: "#00B4FF", type: "gas", label: "Gas: Norway to Europe" },
-            // West Africa to Europe
-            { name: "West Africa → Europe", srcLat: 4.0, lng: 4.0, dstLat: 52.0, dstLng: 5.0, color: "#FF6600", type: "oil", label: "Oil: Nigeria to Europe/Americas" },
-            // Europe to Asia via Suez
-            { name: "Europe → Suez → Asia", srcLat: 40.0, srcLng: 0.0, dstLat: 25.0, dstLng: 121.0, color: "#90A4AE", type: "goods", label: "Goods: Europe to Asia" }
-        ];
-
-        // ==================== MAP SETUP ====================
-        let map;
-        let chokepointMarkers = [];
-        let resourceMarkers = [];
-        let routeLines = [];
-        
-        const layersVisible = {
-            routes: true,
-            chokepoints: true,
-            resources: true
-        };
-
-        function initMap() {
-            map = L.map('map', {
-                center: [20, 20],
-                zoom: 2,
-                minZoom: 2,
-                maxZoom: 8,
-                worldCopyJump: true,
-                maxBounds: [[-85, -180], [85, 180]],
-                maxBoundsViscosity: 1.0
-            });
-
-            // Dark Carto basemap
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-                subdomains: 'abcd',
-                maxZoom: 19
-            }).addTo(map);
-
-            // Add layers
-            addChokepoints();
-            addResourceZones();
-            addShippingRoutes();
-        }
-
-        // ==================== LAYER FUNCTIONS ====================
-        function addChokepoints() {
-            if (!layersVisible.chokepoints) return;
-
-            chokepoints.forEach(cp => {
-                // Create pulsing effect with CSS animation via marker class
-                const marker = L.circleMarker([cp.lat, cp.lng], {
-                    radius: 10,
-                    fillColor: '#FF3D3D',
-                    fillOpacity: 0.9,
-                    color: '#FF3D3D',
-                    weight: 2,
-                    className: 'chokepoint-marker'
-                }).addTo(map);
-
-                marker.bindPopup(generateChokepointPopup(cp));
-                marker.on('click', function(e) {
-                    L.DomEvent.stopPropagation(e);
-                });
-                
-                chokepointMarkers.push(marker);
-            });
-
-            // Add CSS for pulsing animation
-            const style = document.createElement('style');
-            style.textContent = `
-                .chokepoint-marker {
-                    animation: chokepointPulse 2s ease-in-out infinite;
-                }
-                @keyframes chokepointPulse {
-                    0%, 100% { 
-                        opacity: 1;
-                        box-shadow: 0 0 0 0 rgba(255, 61, 61, 0.4);
-                    }
-                    50% { 
-                        opacity: 0.8;
-                        box-shadow: 0 0 0 8px rgba(255, 61, 61, 0);
-                    }
-                }
-            `;
-            document.head.appendChild(style);
-        }
-
-        function addResourceZones() {
-            if (!layersVisible.resources) return;
-
-            resourceZones.forEach(zone => {
-                const marker = L.circleMarker([zone.lat, zone.lng], {
-                    radius: 7,
-                    fillColor: zone.color,
-                    fillOpacity: 0.8,
-                    color: zone.color,
-                    weight: 1.5
-                }).addTo(map);
-
-                marker.bindPopup(generateZonePopup(zone));
-                marker.on('click', function(e) {
-                    L.DomEvent.stopPropagation(e);
-                });
-                
-                resourceMarkers.push(marker);
-            });
-        }
-
-        function addShippingRoutes() {
-            if (!layersVisible.routes) return;
-
-            shippingRoutes.forEach(route => {
-                // Handle routes with altDst for curved paths
-                let latlngs;
-                if (route.altDstLat && route.altDstLng) {
-                    latlngs = [
-                        [route.srcLat, route.srcLng],
-                        [(route.srcLat + route.dstLat) / 2, (route.srcLng + route.dstLng) / 2],
-                        [(route.dstLat + route.altDstLat) / 2, (route.dstLng + route.altDstLng) / 2],
-                        [route.altDstLat, route.altDstLng]
-                    ];
-                } else {
-                    latlngs = createCurvedPath(route.srcLat, route.srcLng, route.dstLat, route.dstLng);
-                }
-
-                const polyline = L.polyline(latlngs, {
-                    color: route.color,
-                    weight: 2,
-                    opacity: 0.7,
-                    dashArray: route.type === 'bypass' ? '8, 4' : null
-                }).addTo(map);
-
-                polyline.bindPopup(generateRoutePopup(route));
-                polyline.on('click', function(e) {
-                    L.DomEvent.stopPropagation(e);
-                });
-                
-                routeLines.push(polyline);
-            });
-        }
-
-        // Create curved path between two points
-        function createCurvedPath(lat1, lng1, lat2, lng2) {
-            const steps = 50;
-            const path = [];
-            
-            for (let i = 0; i <= steps; i++) {
-                const t = i / steps;
-                
-                // Simple great circle approximation
-                const lat = lat1 + (lat2 - lat1) * t;
-                const lng = lng1 + (lng2 - lng1) * t;
-                
-                // Add curve based on distance
-                const midLat = (lat1 + lat2) / 2;
-                const curve = Math.sin(t * Math.PI) * 5; // 5 degree curve
-                
-                path.push([lat + curve * (1 - Math.abs(t - 0.5) * 2), lng]);
-            }
-            
-            return path;
-        }
-
-        // ==================== POPUP GENERATORS ====================
-        function generateChokepointPopup(cp) {
-            let statsHtml = '<div class="popup-stat-grid">';
-            cp.stats.forEach(s => {
-                statsHtml += `
-                    <div class="popup-stat">
-                        <div class="popup-stat-label">${s.label}</div>
-                        <div class="popup-stat-value">${s.value}</div>
-                    </div>
-                `;
-            });
-            statsHtml += '</div>';
-
-            return `
-                <div class="popup-header">
-                    <div class="popup-title">${cp.name}</div>
-                    <div class="popup-type">Strategic Chokepoint</div>
-                </div>
-                <div class="popup-body">
-                    ${statsHtml}
-                    <div class="popup-section">
-                        <div class="popup-section-title">Context</div>
-                        <div class="popup-section-content">${cp.context}</div>
-                    </div>
-                    <div class="popup-section">
-                        <div class="popup-section-title">Key Actors</div>
-                        <div class="popup-section-content">${cp.actors}</div>
-                    </div>
-                    <div class="popup-impact">
-                        <div class="popup-impact-label">What If It Blocked?</div>
-                        <div class="popup-impact-text">${cp.impact}</div>
-                    </div>
-                    <div class="popup-status">
-                        <div class="popup-status-label">2026 Status</div>
-                        <div class="popup-status-text">${cp.status}</div>
-                    </div>
-                </div>
-            `;
-        }
-
-        function generateZonePopup(zone) {
-            return `
-                <div class="popup-header">
-                    <div class="popup-title">${zone.name}</div>
-                    <div class="popup-type" style="color: ${zone.color}">${zone.type}</div>
-                </div>
-                <div class="popup-body">
-                    <div class="popup-stat-grid">
-                        <div class="popup-stat">
-                            <div class="popup-stat-label">Type</div>
-                            <div class="popup-stat-value" style="color: ${zone.color}">${zone.type}</div>
-                        </div>
-                        <div class="popup-stat">
-                            <div class="popup-stat-label">Production</div>
-                            <div class="popup-stat-value">${zone.value}</div>
-                        </div>
-                    </div>
-                    <div class="popup-section">
-                        <div class="popup-section-title">Details</div>
-                        <div class="popup-section-content">${zone.detail}</div>
-                    </div>
-                    <div class="popup-impact warning">
-                        <div class="popup-impact-label">Global Impact</div>
-                        <div class="popup-impact-text">Click the route lines to see how this resource flows to global markets.</div>
-                    </div>
-                </div>
-            `;
-        }
-
-        function generateRoutePopup(route) {
-            return `
-                <div class="popup-header">
-                    <div class="popup-title">${route.name}</div>
-                    <div class="popup-type" style="color: ${route.color}">${route.type.toUpperCase()} Route</div>
-                </div>
-                <div class="popup-body">
-                    <div class="popup-section">
-                        <div class="popup-section-title">What Flows Here</div>
-                        <div class="popup-section-content">${route.label}</div>
-                    </div>
-                    <div class="popup-impact ${route.type === 'bypass' ? 'warning' : ''}">
-                        <div class="popup-impact-label">Route Type</div>
-                        <div class="popup-impact-text">${route.type === 'bypass' ? 'Alternative bypass route when primary routes are disrupted.' : 'Primary shipping lane.'}</div>
-                    </div>
-                    <div class="popup-status">
-                        <div class="popup-status-label">Current Flow</div>
-                        <div class="popup-status-text">${route.type === 'bypass' ? 'Increased traffic due to Red Sea disruptions.' : 'Operating normally.'}</div>
-                    </div>
-                </div>
-            `;
-        }
-
-        // ==================== UI CONTROLS ====================
-        function toggleLegend() {
-            const panel = document.getElementById('legendPanel');
-            const toggle = document.getElementById('legendToggle');
-            panel.classList.toggle('open');
-            toggle.classList.toggle('open');
-        }
-
-        function toggleLayer(layer) {
-            const checkbox = document.getElementById(`check-${layer}`);
-            checkbox.classList.toggle('active');
-            layersVisible[layer] = checkbox.classList.contains('active');
-
-            rebuildLayers();
-        }
-
-        function rebuildLayers() {
-            // Remove all markers and lines
-            chokepointMarkers.forEach(m => map.removeLayer(m));
-            resourceMarkers.forEach(m => map.removeLayer(m));
-            routeLines.forEach(l => map.removeLayer(l));
-            
-            chokepointMarkers = [];
-            resourceMarkers = [];
-            routeLines = [];
-
-            // Rebuild based on visibility
-            if (layersVisible.chokepoints) addChokepoints();
-            if (layersVisible.resources) addResourceZones();
-            if (layersVisible.routes) addShippingRoutes();
-        }
-
-        // Close popups when clicking on map
-        map.on('click', function() {
-            map.closePopup();
-        });
-
-        // ==================== INITIALIZE ====================
-        document.addEventListener('DOMContentLoaded', initMap);
-    </script>
+<div class="header">
+  <div>
+    <h1>WORLD RESOURCE MAP</h1>
+    <span>STRATEGIC CHOKEPOINTS &amp; SUPPLY ROUTES // 2026</span>
+  </div>
+  <span id="timestamp"></span>
+</div>
+<div class="controls">
+  <button class="btn active" data-toggle="routes">ROUTES</button>
+  <button class="btn active" data-toggle="zones">ZONES</button>
+  <button class="btn active" data-toggle="chokepoints">CHOKEPOINTS</button>
+  <div class="zoom-controls">
+    <button class="btn btn-zoom" id="zoomOut">−</button>
+    <button class="btn btn-zoom" id="zoomIn">+</button>
+  </div>
+</div>
+<div class="map-container">
+  <svg id="map" viewBox="0 0 1000 500" preserveAspectRatio="xMidYMid meet">
+    <defs>
+      <filter id="glow">
+        <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+        <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+    </defs>
+    <!-- Ocean background -->
+    <rect class="ocean" x="0" y="0" width="1000" height="500"/>
+    <!-- World Map - Simplified Mercator -->
+    <g id="world">
+      <!-- North America -->
+      <path class="country" d="M50,80 L180,60 L220,70 L260,50 L280,60 L290,80 L300,100 L310,130 L280,150 L250,140 L230,160 L200,180 L170,200 L140,190 L120,170 L100,150 L80,120 L50,100 Z"/>
+      <path class="country" d="M140,190 L170,200 L200,210 L220,230 L200,250 L170,260 L150,250 L130,230 L120,210 Z"/>
+      <!-- Greenland -->
+      <path class="country" d="M300,30 L360,25 L380,40 L370,60 L340,65 L310,55 Z"/>
+      <!-- Central America -->
+      <path class="country" d="M170,260 L190,270 L210,280 L200,290 L180,285 L170,275 Z"/>
+      <!-- South America -->
+      <path class="country" d="M200,300 L240,290 L270,300 L280,320 L290,350 L270,380 L240,400 L210,390 L190,360 L180,330 L190,310 Z"/>
+      <!-- Europe -->
+      <path class="country" d="M440,80 L480,70 L500,80 L520,90 L530,110 L520,130 L490,140 L460,130 L440,110 Z"/>
+      <path class="country" d="M460,130 L490,140 L510,160 L500,180 L470,185 L450,170 L440,150 Z"/>
+      <!-- Scandinavia -->
+      <path class="country" d="M480,50 L500,40 L520,50 L510,70 L495,75 L480,65 Z"/>
+      <!-- UK -->
+      <path class="country" d="M430,100 L445,95 L450,110 L440,120 L425,115 Z"/>
+      <!-- Africa -->
+      <path class="country" d="M440,200 L500,190 L540,200 L560,230 L550,270 L520,300 L480,320 L440,310 L420,280 L430,240 L440,210 Z"/>
+      <!-- Madagascar -->
+      <path class="country" d="M580,300 L595,295 L600,315 L590,330 L575,325 Z"/>
+      <!-- Middle East -->
+      <path class="country" d="M540,150 L580,140 L610,150 L620,180 L600,200 L570,195 L540,180 L530,165 Z"/>
+      <!-- Russia -->
+      <path class="country" d="M520,40 L700,30 L800,50 L850,80 L820,120 L750,130 L700,120 L650,130 L600,125 L550,110 L520,90 Z"/>
+      <!-- Asia -->
+      <path class="country" d="M650,130 L750,130 L820,150 L850,180 L860,220 L830,250 L780,260 L720,250 L680,230 L650,200 L640,170 L650,140 Z"/>
+      <!-- China -->
+      <path class="country" d="M720,180 L780,170 L820,190 L830,220 L800,250 L750,260 L710,250 L690,220 L700,190 Z"/>
+      <!-- Japan/Korea -->
+      <path class="country" d="M860,170 L880,165 L885,185 L870,195 L855,190 Z"/>
+      <path class="country" d="M850,200 L870,195 L875,210 L860,215 L845,210 Z"/>
+      <!-- Southeast Asia -->
+      <path class="country" d="M780,260 L810,250 L840,260 L850,290 L830,310 L800,320 L770,310 L770,280 Z"/>
+      <!-- India -->
+      <path class="country" d="M640,200 L680,190 L720,200 L730,240 L710,270 L680,280 L650,270 L630,240 L630,210 Z"/>
+      <!-- Australia -->
+      <path class="country" d="M800,340 L860,330 L900,340 L910,370 L890,400 L850,410 L810,400 L790,370 L795,350 Z"/>
+      <!-- New Zealand -->
+      <path class="country" d="M930,400 L945,395 L950,415 L935,420 Z"/>
+      <!-- Brazil (part of SA) already defined -->
+      <!-- Venezuela/Colombia area -->
+      <path class="country" d="M200,260 L240,250 L260,260 L250,280 L220,285 L200,275 Z"/>
+      <!-- Peru -->
+      <path class="country" d="M190,310 L210,300 L230,310 L220,340 L200,350 L180,340 L185,320 Z"/>
+      <!-- Chile -->
+      <path class="country" d="M200,350 L215,345 L220,370 L210,400 L195,410 L190,390 Z"/>
+      <!-- Nigeria -->
+      <path class="country" d="M450,250 L475,245 L485,265 L470,280 L450,275 L445,260 Z"/>
+      <!-- South Africa -->
+      <path class="country" d="M490,360 L520,350 L540,370 L530,400 L500,410 L480,395 L485,375 Z"/>
+      <!-- Ukraine -->
+      <path class="country" d="M530,110 L560,100 L575,120 L565,140 L540,145 L525,130 Z"/>
+      <!-- Kazakhstan -->
+      <path class="country" d="M600,100 L660,90 L690,110 L680,140 L640,150 L600,140 L590,120 Z"/>
+      <!-- Iran -->
+      <path class="country" d="M580,150 L620,140 L650,155 L640,185 L610,195 L580,185 L570,165 Z"/>
+      <!-- Saudi Arabia -->
+      <path class="country" d="M540,180 L580,170 L610,185 L600,220 L560,230 L530,220 L530,200 Z"/>
+      <!-- UAE -->
+      <path class="country" d="M610,200 L630,195 L635,215 L620,225 L608,215 Z"/>
+      <!-- Qatar -->
+      <ellipse class="country" cx="612" cy="210" rx="5" ry="8"/>
+      <!-- Norway/Sweden -->
+      <path class="country" d="M490,55 L510,45 L530,55 L520,80 L500,85 L488,70 Z"/>
+      <!-- Canada -->
+      <path class="country" d="M50,80 L180,60 L220,70 L260,50 L280,60 L260,40 L200,45 L140,50 L80,60 Z"/>
+      <!-- Peru -->
+      <path class="country" d="M190,310 L210,300 L230,310 L220,340 L200,350 L180,340 L185,320 Z"/>
+      <!-- Argentina -->
+      <path class="country" d="M230,380 L260,370 L270,400 L250,430 L220,440 L210,420 L220,400 Z"/>
+      <!-- Congo -->
+      <path class="country" d="M490,270 L520,260 L540,280 L530,310 L500,320 L480,305 L485,285 Z"/>
+      <!-- Indonesia -->
+      <path class="country" d="M780,290 L820,285 L850,295 L840,315 L810,320 L780,310 Z"/>
+      <!-- Philippines -->
+      <path class="country" d="M850,250 L865,245 L870,265 L855,275 L845,265 Z"/>
+    </g>
+    <!-- Shipping Routes -->
+    <g id="routes">
+      <!-- Oil Routes -->
+      <path class="route" data-type="oil" d="M580,200 Q650,150 750,170" stroke="var(--route-oil)" stroke-width="2" fill="none"/>
+      <path class="route" data-type="oil" d="M555,190 Q620,180 700,190" stroke="var(--route-oil)" stroke-width="2" fill="none"/>
+      <path class="route" data-type="oil" d="M590,195 Q700,200 850,170" stroke="var(--route-oil)" stroke-width="2" fill="none"/>
+      <path class="route" data-type="oil" d="M530,220 Q580,250 660,240" stroke="var(--route-oil)" stroke-width="2" fill="none"/>
+      <path class="route" data-type="oil" d="M610,195 Q650,220 700,250" stroke="var(--route-oil)" stroke-width="2" fill="none"/>
+      <path class="route" data-type="oil" d="M220,280 Q300,260 450,240" stroke="var(--route-oil)" stroke-width="2" fill="none"/>
+      <path class="route" data-type="oil" d="M190,340 Q280,320 380,280" stroke="var(--route-oil)" stroke-width="2" fill="none"/>
+      <path class="route" data-type="oil" d="M260,300 Q350,280 450,260" stroke="var(--route-oil)" stroke-width="2" fill="none"/>
+      <path class="route" data-type="oil" d="M350,140 Q420,160 470,180" stroke="var(--route-oil)" stroke-width="2" fill="none"/>
+      <!-- LNG Routes -->
+      <path class="route" data-type="lng" d="M600,195 Q680,160 780,140" stroke="var(--route-lng)" stroke-width="2" fill="none"/>
+      <path class="route" data-type="lng" d="M820,290 Q880,320 900,360" stroke="var(--route-lng)" stroke-width="2" fill="none"/>
+      <path class="route" data-type="lng" d="M220,260 Q320,220 450,160" stroke="var(--route-lng)" stroke-width="2" fill="none"/>
+      <path class="route" data-type="lng" d="M620,220 Q700,200 780,180" stroke="var(--route-lng)" stroke-width="2" fill="none"/>
+      <!-- Minerals Routes -->
+      <path class="route" data-type="minerals" d="M190,340 Q280,300 380,280" stroke="var(--route-minerals)" stroke-width="2" fill="none"/>
+      <path class="route" data-type="minerals" d="M500,280 Q600,260 700,250" stroke="var(--route-minerals)" stroke-width="2" fill="none"/>
+      <path class="route" data-type="minerals" d="M730,250 Q800,280 850,300" stroke="var(--route-minerals)" stroke-width="2" fill="none"/>
+      <path class="route" data-type="minerals" d="M500,300 Q580,280 680,270" stroke="var(--route-minerals)" stroke-width="2" fill="none"/>
+      <!-- Agri Routes -->
+      <path class="route" data-type="agri" d="M530,160 Q500,180 460,200" stroke="var(--route-agri)" stroke-width="2" fill="none"/>
+      <path class="route" data-type="agri" d="M250,280 Q350,260 450,240" stroke="var(--route-agri)" stroke-width="2" fill="none"/>
+      <path class="route" data-type="agri" d="M230,380 Q350,340 460,300" stroke="var(--route-agri)" stroke-width="2" fill="none"/>
+    </g>
+    <!-- Resource Zones -->
+    <g id="zones">
+      <!-- Oil Zones -->
+      <circle class="resource-zone" data-zone="saudi" cx="565" cy="205" r="8" fill="var(--oil)" filter="url(#glow)"/>
+      <circle class="resource-zone" data-zone="kuwait" cx="595" cy="190" r="8" fill="var(--oil)" filter="url(#glow)"/>
+      <circle class="resource-zone" data-zone="iran" cx="630" cy="175" r="8" fill="var(--oil)" filter="url(#glow)"/>
+      <circle class="resource-zone" data-zone="uae" cx="618" cy="208" r="6" fill="var(--oil)" filter="url(#glow)"/>
+      <circle class="resource-zone" data-zone="russia1" cx="650" cy="90" r="10" fill="var(--oil)" filter="url(#glow)"/>
+      <circle class="resource-zone" data-zone="russia2" cx="720" cy="110" r="10" fill="var(--oil)" filter="url(#glow)"/>
+      <circle class="resource-zone" data-zone="permian" cx="130" cy="200" r="8" fill="var(--oil)" filter="url(#glow)"/>
+      <circle class="resource-zone" data-zone="bakken" cx="170" cy="140" r="6" fill="var(--oil)" filter="url(#glow)"/>
+      <circle class="resource-zone" data-zone="venezuela" cx="210" cy="275" r="8" fill="var(--oil)" filter="url(#glow)"/>
+      <circle class="resource-zone" data-zone="nigeria" cx="460" cy="265" r="8" fill="var(--oil)" filter="url(#glow)"/>
+      <circle class="resource-zone" data-zone="brazil" cx="260" cy="320" r="8" fill="var(--oil)" filter="url(#glow)"/>
+      <circle class="resource-zone" data-zone="uk" cx="445" cy="115" r="6" fill="var(--oil)" filter="url(#glow)"/>
+      <!-- LNG Zones -->
+      <circle class="resource-zone" data-zone="qatar" cx="608" cy="210" r="6" fill="var(--lng)" filter="url(#glow)"/>
+      <circle class="resource-zone" data-zone="australia" cx="840" cy="310" r="8" fill="var(--lng)" filter="url(#glow)"/>
+      <circle class="resource-zone" data-zone="usgulf" cx="180" cy="240" r="8" fill="var(--lng)" filter="url(#glow)"/>
+      <circle class="resource-zone" data-zone="yamal" cx="620" cy="55" r="8" fill="var(--lng)" filter="url(#glow)"/>
+      <!-- Minerals Zones -->
+      <circle class="resource-zone" data-zone="chile" cx="205" cy="375" r="6" fill="var(--minerals)" filter="url(#glow)"/>
+      <circle class="resource-zone" data-zone="congo" cx="510" cy="290" r="6" fill="var(--minerals)" filter="url(#glow)"/>
+      <circle class="resource-zone" data-zone="china" cx="760" cy="220" r="10" fill="var(--minerals)" filter="url(#glow)"/>
+      <circle class="resource-zone" data-zone="indonesia" cx="810" cy="300" r="6" fill="var(--minerals)" filter="url(#glow)"/>
+      <circle class="resource-zone" data-zone="safrica" cx="510" cy="380" r="6" fill="var(--minerals)" filter="url(#glow)"/>
+      <!-- Agri Zones -->
+      <circle class="resource-zone" data-zone="ukraine" cx="555" cy="130" r="6" fill="var(--agri)" filter="url(#glow)"/>
+      <circle class="resource-zone" data-zone="usmidwest" cx="160" cy="180" r="8" fill="var(--agri)" filter="url(#glow)"/>
+      <circle class="resource-zone" data-zone="brazilagri" cx="250" cy="340" r="8" fill="var(--agri)" filter="url(#glow)"/>
+      <circle class="resource-zone" data-zone="argentina" cx="240" cy="400" r="6" fill="var(--agri)" filter="url(#glow)"/>
+    </g>
+    <!-- Chokepoints -->
+    <g id="chokepoints">
+      <g class="chokepoint" data-chokepoint="hormuz" transform="translate(648,195)">
+        <circle class="chokepoint-pulse" r="10" fill="rgba(255,102,0,0.3)"/>
+        <circle r="6" fill="var(--accent)" filter="url(#glow)"/>
+      </g>
+      <g class="chokepoint" data-chokepoint="malacca" transform="translate(810,290)">
+        <circle class="chokepoint-pulse" r="10" fill="rgba(255,102,0,0.3)"/>
+        <circle r="6" fill="var(--accent)" filter="url(#glow)"/>
+      </g>
+      <g class="chokepoint" data-chokepoint="suez" transform="translate(530,200)">
+        <circle class="chokepoint-pulse" r="10" fill="rgba(255,102,0,0.3)"/>
+        <circle r="6" fill="var(--accent)" filter="url(#glow)"/>
+      </g>
+      <g class="chokepoint" data-chokepoint="panama" transform="translate(200,280)">
+        <circle class="chokepoint-pulse" r="10" fill="rgba(255,102,0,0.3)"/>
+        <circle r="6" fill="var(--accent)" filter="url(#glow)"/>
+      </g>
+      <g class="chokepoint" data-chokepoint="bab" transform="translate(600,230)">
+        <circle class="chokepoint-pulse" r="10" fill="rgba(255,102,0,0.3)"/>
+        <circle r="6" fill="var(--accent)" filter="url(#glow)"/>
+      </g>
+      <g class="chokepoint" data-chokepoint="danish" transform="translate(490,90)">
+        <circle class="chokepoint-pulse" r="10" fill="rgba(255,102,0,0.3)"/>
+        <circle r="6" fill="var(--accent)" filter="url(#glow)"/>
+      </g>
+      <g class="chokepoint" data-chokepoint="bosphorus" transform="translate(545,135)">
+        <circle class="chokepoint-pulse" r="10" fill="rgba(255,102,0,0.3)"/>
+        <circle r="6" fill="var(--accent)" filter="url(#glow)"/>
+      </g>
+      <g class="chokepoint" data-chokepoint="gibraltar" transform="translate(440,165)">
+        <circle class="chokepoint-pulse" r="10" fill="rgba(255,102,0,0.3)"/>
+        <circle r="6" fill="var(--accent)" filter="url(#glow)"/>
+      </g>
+      <g class="chokepoint" data-chokepoint="cape" transform="translate(510,380)">
+        <circle class="chokepoint-pulse" r="10" fill="rgba(255,102,0,0.3)"/>
+        <circle r="6" fill="var(--accent)" filter="url(#glow)"/>
+      </g>
+      <g class="chokepoint" data-chokepoint="taiwan" transform="translate(855,220)">
+        <circle class="chokepoint-pulse" r="10" fill="rgba(255,102,0,0.3)"/>
+        <circle r="6" fill="var(--accent)" filter="url(#glow)"/>
+      </g>
+      <g class="chokepoint" data-chokepoint="torres" transform="translate(860,335)">
+        <circle class="chokepoint-pulse" r="10" fill="rgba(255,102,0,0.3)"/>
+        <circle r="6" fill="var(--accent)" filter="url(#glow)"/>
+      </g>
+      <g class="chokepoint" data-chokepoint="lombok" transform="translate(830,305)">
+        <circle class="chokepoint-pulse" r="10" fill="rgba(255,102,0,0.3)"/>
+        <circle r="6" fill="var(--accent)" filter="url(#glow)"/>
+      </g>
+    </g>
+  </svg>
+</div>
+<div class="popup-overlay" id="popupOverlay"></div>
+<div class="popup" id="popup">
+  <button class="popup-close" onclick="closePopup()">×</button>
+  <h2 id="popupTitle">Title</h2>
+  <div id="popupContent"></div>
+</div>
+<div class="legend" id="legend">
+  <div class="legend-toggle" onclick="toggleLegend()">
+    <h3>LEGEND</h3>
+    <span id="legendArrow">▲</span>
+  </div>
+  <div class="legend-items" id="legendItems">
+    <div class="legend-item"><div class="legend-pulse"></div><span>Chokepoint</span></div>
+    <div class="legend-item"><div class="legend-circle" style="background:var(--oil)"></div><span>Oil</span></div>
+    <div class="legend-item"><div class="legend-circle" style="background:var(--lng)"></div><span>LNG</span></div>
+    <div class="legend-item"><div class="legend-circle" style="background:var(--minerals)"></div><span>Minerals</span></div>
+    <div class="legend-item"><div class="legend-circle" style="background:var(--agri)"></div><span>Agriculture</span></div>
+    <div class="legend-item"><div class="legend-line" style="background:var(--route-oil)"></div><span>Oil Route</span></div>
+    <div class="legend-item"><div class="legend-line" style="background:var(--route-lng)"></div><span>LNG Route</span></div>
+    <div class="legend-item"><div class="legend-line" style="background:var(--route-minerals)"></div><span>Minerals Route</span></div>
+    <div class="legend-item"><div class="legend-line" style="background:var(--route-agri)"></div><span>Agri Route</span></div>
+  </div>
+</div>
+<script>
+const chokepointData = {
+  hormuz: {
+    name: "STRAIT OF HORUZ",
+    stats: [
+      { label: "Volume", value: "21.2 MBD" },
+      { label: "World Oil %", value: "20%" },
+      { label: "Width", value: "34 mi" },
+      { label: "Depth", value: "230 ft" }
+    ],
+    risk: "HIGH — Iran tensions, Houthi扩展",
+    whatIf: "Oil spike $30-50/barrel, Asian refineries forced to draw reserves"
+  },
+  malacca: {
+    name: "STRAIT OF MALACCA",
+    stats: [
+      { label: "Volume", value: "16.5 MBD" },
+      { label: "World Trade %", value: "25%" },
+      { label: "Width", value: "2.8 mi" },
+      { label: "Traffic", value: "140k vessels/year" }
+    ],
+    risk: "MODERATE — Piracy, congestion",
+    whatIf: "Container rates 5x, electronics shortage globally"
+  },
+  suez: {
+    name: "SUEZ CANAL",
+    stats: [
+      { label: "Volume", value: "12.5 MBD" },
+      { label: "World Trade %", value: "12%" },
+      { label: "Daily Value", value: "$9.6B" },
+      { label: "Transit Time", value: "11-16 hrs" }
+    ],
+    risk: "MODERATE — Red Sea instability",
+    whatIf: "Forces 6,000 mi Cape route, $15/barrel运费增加"
+  },
+  panama: {
+    name: "PANAMA CANAL",
+    stats: [
+      { label: "Volume", value: "2.5 MBD" },
+      { label: "World Trade %", value: "5%" },
+      { label: "Capacity", value: "40 ships/day" },
+      { label: " draught Limit", value: "50 ft" }
+    ],
+    risk: "HIGH — Climate-driven water crisis",
+    whatIf: "US-Asia shipping costs +$3-5M per voyage, reshapes trade routes"
+  },
+  bab: {
+    name: "BAB EL-MANDEB",
+    stats: [
+      { label: "Volume", value: "8.8 MBD" },
+      { label: "EU LNG %", value: "30%" },
+      { label: "Width", value: "20 mi" },
+      { label: "Chokepoint Risk", value: "HIGH" }
+    ],
+    risk: "HIGH — Yemen conflict proximity",
+    whatIf: "EU LNG prices spike 40%, winter energy crisis"
+  },
+  danish: {
+    name: "DANISH STRAITS",
+    stats: [
+      { label: "Volume", value: "3.2 MBD" },
+      { label: "Russian Gas %", value: "60%" },
+      { label: "Ships/day", value: "220" },
+      { label: "Regulated", value: "Yes" }
+    ],
+    risk: "LOW-MEDIUM — Ukraine conflict escalation",
+    whatIf: "European gas storage draws faster, industrial curtailment"
+  },
+  bosphorus: {
+    name: "BOSPHORUS",
+    stats: [
+      { label: "Volume", value: "2.9 MBD" },
+      { label: "Black Sea Access", value: "100%" },
+      { label: "Width", value: "0.5-2 mi" },
+      { label: "Traffic", value: "45k vessels/year" }
+    ],
+    risk: "MEDIUM — Turkey-Russia dynamics",
+    whatIf: "Ukrainian grain exports halt, global food prices spike"
+  },
+  gibraltar: {
+    name: "GIBRALTAR",
+    stats: [
+      { label: "Med Access", value: "100%" },
+      { label: "Ships/day", value: "150" },
+      { label: "Width", value: "8 mi" },
+      { label: "Depth", value: "1,200 ft" }
+    ],
+    risk: "LOW — Brexit friction",
+    whatIf: "Mediterranean shipping reroutes to Suez, +3 days"
+  },
+  cape: {
+    name: "CAPE OF GOOD HOPE",
+    stats: [
+      { label: "Bypass Route", value: "Yes" },
+      { label: "Added Distance", value: "6,000 mi" },
+      { label: "Added Time", value: "10-14 days" },
+      { label: "Traffic", value: "Rising" }
+    ],
+    risk: "LOW — Weather primary risk",
+    whatIf: "New normal for Red Sea avoidance, global supply chain costs +$15B/yr"
+  },
+  taiwan: {
+    name: "TAIWAN STRAIT",
+    stats: [
+      { label: "Chip Trade", value: "$2.5T" },
+      { label: "TSMC Revenue", value: "$70B" },
+      { label: "Width", value: "110 mi" },
+      { label: "Military Risk", value: "HIGH" }
+    ],
+    risk: "CRITICAL — China tensions",
+    whatIf: "Global chip shortage, every industry affected, recession trigger"
+  },
+  torres: {
+    name: "TORRES STRAIT",
+    stats: [
+      { label: "Aus-Asia Route", value: "Primary" },
+      { label: "Width", value: "95 mi" },
+      { label: "Traffic", value: "50 vessels/week" },
+      { label: "Depth", value: "50 ft" }
+    ],
+    risk: "LOW — PNG relations",
+    whatIf: "Australia-Asia trade delays, coal exports affected"
+  },
+  lombok: {
+    name: "LOMBOK STRAIT",
+    stats: [
+      { label: "Alt Route", value: "Malacca bypass" },
+      { label: "Width", value: "25 mi" },
+      { label: "Depth", value: "1,300 ft" },
+      { label: "Traffic", value: "Growing" }
+    ],
+    risk: "LOW — Natural factors",
+    whatIf: "Malacca alternatives viable, regional shipping resilient"
+  }
+};
+const zoneData = {
+  saudi: { name: "Saudi Arabia Oil", resource: "Oil", extractor: "Saudi Aramco", destination: "Asia 60%, Europe 25%, US 10%", capacity: "12 MBD" },
+  kuwait: { name: "Kuwait/Iraq Oil", resource: "Oil", extractor: "KOC, Iraqi Ministry of Oil", destination: "Asia 70%, Europe 20%", capacity: "6.5 MBD" },
+  iran: { name: "Iran Oil", resource: "Oil", extractor: "NIOC", destination: "China 80%, Limited others", capacity: "4 MBD (sanctioned)" },
+  uae: { name: "UAE Oil", resource: "Oil", extractor: "ADNOC", destination: "Asia 75%, Europe 15%", capacity: "4.2 MBD" },
+  russia1: { name: "Russia West Siberia", resource: "Oil", extractor: "Rosneft, Lukoil", destination: "Europe 45%, China 35%", capacity: "10 MBD" },
+  russia2: { name: "Russia East", resource: "Oil", extractor: "Rosneft, Transneft", destination: "China 70%, Pacific Rim 20%", capacity: "3 MBD" },
+  permian: { name: "US Permian Basin", resource: "Oil", extractor: "Exxon, Chevron, independents", destination: "US exports, Mexico 15%", capacity: "6 MBD" },
+  bakken: { name: "US Bakken", resource: "Oil", extractor: "Continental, Whiting", destination: "Midwest refining, exports", capacity: "1.2 MBD" },
+  venezuela: { name: "Venezuela Oil", resource: "Oil", extractor: "PDVSA", destination: "US (limited), China 40%", capacity: "2 MBD" },
+  nigeria: { name: "Nigeria Oil", resource: "Oil", extractor: "Shell, Total, Nigerian NOCs", destination: "Europe 50%, US 20%, Asia 20%", capacity: "2.5 MBD" },
+  brazil: { name: "Brazil Pre-Salt", resource: "Oil", extractor: "Petrobras", destination: "China 35%, US 20%, domestic 25%", capacity: "3.5 MBD" },
+  uk: { name: "UK/Norway Oil", resource: "Oil", extractor: "Equinor, Shell, BP", destination: "Europe refining, tankers", capacity: "3 MBD" },
+  qatar: { name: "Qatar LNG", resource: "LNG", extractor: "QatarEnergy", destination: "Asia 70%, Europe 20%, Middle East 10%", capacity: "77 MTPA" },
+  australia: { name: "Australia LNG", resource: "LNG", extractor: "Woodside, Santos, Origin", destination: "Japan 35%, China 30%, Korea 15%", capacity: "88 MTPA" },
+  usgulf: { name: "US Gulf LNG", resource: "LNG", extractor: "Cheniere, Freeport, Sabine Pass", destination: "Europe 50%, Asia 35%, Latin America 10%", capacity: "14 Bcf/d" },
+  yamal: { name: "Russia Yamal LNG", resource: "LNG", extractor: "Novatek", destination: "Europe (historically), China (now)", capacity: "19 MTPA" },
+  chile: { name: "Chile Minerals", resource: "Minerals", extractor: "Codelco, Antofagasta Minerals", destination: "China 40%, US 20%, Europe 25%", product: "Copper 5.5 MMT/yr" },
+  congo: { name: "Congo Minerals", resource: "Minerals", extractor: "Glencore, Ivanhoe Mines", destination: "China 70%, global refined", product: "Cobalt 120K MT/yr" },
+  china: { name: "China Minerals", resource: "Minerals", extractor: "China Minmetals, domestic", destination: "Domestic manufacturing, exports", product: "REEs, steel, aluminum" },
+  indonesia: { name: "Indonesia Minerals", resource: "Minerals", extractor: "Freeport, Antam", destination: "China 50%, Japan 15%, US 10%", product: "Nickel 1.6 MMT/yr" },
+  safrica: { name: "South Africa Minerals", resource: "Minerals", extractor: "Anglo American, Sibanye", destination: "China 40%, Europe 25%, US 15%", product: "Platinum 110 MT/yr" },
+  ukraine: { name: "Ukraine Agriculture", resource: "Agriculture", extractor: "Ukrainian collectives, NIBULON", destination: "Europe 40%, Asia 35%, Africa 20%", product: "Wheat 25 MMT/yr" },
+  usmidwest: { name: "US Midwest Agriculture", resource: "Agriculture", extractor: "ADM, Cargill, family farms", destination: "Export 50%, Domestic 50%", product: "Corn 400 MMT/yr" },
+  brazilagri: { name: "Brazil Agriculture", resource: "Agriculture", extractor: "BRF, Amaggi,cooperatives", destination: "China 45%, EU 20%, Middle East 15%", product: "Soybeans 160 MMT/yr" },
+  argentina: { name: "Argentina Agriculture", resource: "Agriculture", extractor: "ACA, Cresud", destination: "China 30%, EU 25%, domestic 30%", product: "Soybeans 55 MMT/yr" }
+};
+let zoom = 1;
+const map = document.getElementById('map');
+document.querySelectorAll('.chokepoint').forEach(el => {
+  el.addEventListener('click', (e) => {
+    const id = el.dataset.chokepoint;
+    const d = chokepointData[id];
+    if (!d) return;
+    document.getElementById('popupTitle').textContent = d.name;
+    let html = '';
+    d.stats.forEach(s => {
+      html += `<div class="popup-row"><span class="popup-label">${s.label}</span><span class="popup-value">${s.value}</span></div>`;
+    });
+    html += '<div class="popup-section"><h3>2026 RISK ASSESSMENT</h3><div class="popup-row"><span class="popup-label">Status</span><span class="popup-value" style="color:var(--accent)">'+d.risk+'</span></div></div>';
+    html += '<div class="popup-section"><h3>WHAT IF IT CLOSES?</h3><p style="font-size:11px;color:var(--text-sec);line-height:1.5">'+d.whatIf+'</p></div>';
+    document.getElementById('popupContent').innerHTML = html;
+    showPopup();
+  });
+});
+document.querySelectorAll('.resource-zone').forEach(el => {
+  el.addEventListener('click', (e) => {
+    const id = el.dataset.zone;
+    const d = zoneData[id];
+    if (!d) return;
+    document.getElementById('popupTitle').textContent = d.name;
+    let html = '';
+    html += `<div class="popup-row"><span class="popup-label">Resource</span><span class="popup-value">${d.resource}</span></div>`;
+    html += `<div class="popup-row"><span class="popup-label">Extractor</span><span class="popup-value">${d.extractor}</span></div>`;
+    html += `<div class="popup-row"><span class="popup-label">Capacity</span><span class="popup-value">${d.capacity || d.product}</span></div>`;
+    html += '<div class="popup-section"><h3>DESTINATION</h3><p style="font-size:11px;color:var(--text-sec);line-height:1.5">'+d.destination+'</p></div>';
+    document.getElementById('popupContent').innerHTML = html;
+    showPopup();
+  });
+});
+document.querySelectorAll('.route').forEach(el => {
+  el.addEventListener('click', (e) => {
+    const type = el.dataset.type;
+    const typeNames = { oil: 'OIL', lng: 'LNG', minerals: 'MINERALS', agri: 'AGRICULTURE' };
+    const descs = {
+      oil: 'Crude oil and refined products flow from Middle East, Russia, Americas to refineries in Asia, Europe, US. Tankers average 500K DWT.',
+      lng: 'Liquefied natural gas transported in cryogenic vessels from Qatar, Australia, US, Russia to regasification terminals worldwide.',
+      minerals: 'Copper, cobalt, nickel, lithium, and rare earth elements ship from Chile, Congo, Indonesia, South Africa to manufacturing hubs.',
+      agri: 'Wheat, corn, soybeans flow from Ukraine, US Midwest, Brazil, Argentina to food-deficient regions and livestock operations.'
+    };
+    document.getElementById('popupTitle').textContent = typeNames[type] + ' SHIPPING ROUTE';
+    document.getElementById('popupContent').innerHTML = '<p style="font-size:12px;color:var(--text-sec);line-height:1.6">'+descs[type]+'</p>';
+    showPopup();
+  });
+});
+function showPopup() {
+  document.getElementById('popupOverlay').style.display = 'block';
+  document.getElementById('popup').style.display = 'block';
+}
+function closePopup() {
+  document.getElementById('popupOverlay').style.display = 'none';
+  document.getElementById('popup').style.display = 'none';
+}
+document.getElementById('popupOverlay').addEventListener('click', closePopup);
+document.querySelectorAll('.btn[data-toggle]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const target = btn.dataset.toggle;
+    const el = document.getElementById(target);
+    if (!el) return;
+    const isActive = btn.classList.contains('active');
+    btn.classList.toggle('active');
+    el.style.display = isActive ? 'none' : 'block';
+  });
+});
+document.getElementById('zoomIn').addEventListener('click', () => {
+  zoom = Math.min(zoom + 0.25, 3);
+  map.style.transform = `scale(${zoom})`;
+  map.style.transformOrigin = 'center center';
+});
+document.getElementById('zoomOut').addEventListener('click', () => {
+  zoom = Math.max(zoom - 0.25, 0.5);
+  map.style.transform = `scale(${zoom})`;
+  map.style.transformOrigin = 'center center';
+});
+function toggleLegend() {
+  const items = document.getElementById('legendItems');
+  const arrow = document.getElementById('legendArrow');
+  items.classList.toggle('show');
+  arrow.textContent = items.classList.contains('show') ? '▼' : '▲';
+}
+document.getElementById('timestamp').textContent = new Date().toISOString().slice(0,10) + ' // LIVE';
+</script>
 </body>
 </html>

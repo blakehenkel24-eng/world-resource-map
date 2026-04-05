@@ -2,763 +2,740 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
-<title>World Resource Map</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Global Resource Flows — Strategic Trade Intelligence</title>
 <style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 :root {
-  --bg: #0d0d0d;
-  --panel: rgba(20,20,20,0.95);
-  --border: #333;
+  --bg: #0a0a0a;
+  --bg2: #111111;
   --accent: #FF6600;
-  --text: #ffffff;
-  --text-sec: #A0A0A0;
+  --accent2: #FF8533;
+  --text: #e0e0e0;
+  --text2: #888888;
+  --border: #2a2a2a;
   --oil: #FF6600;
-  --lng: #00AAFF;
+  --gas: #00AAFF;
   --minerals: #FFD700;
   --agri: #00CC66;
-  --route-oil: rgba(255,102,0,0.5);
-  --route-lng: rgba(0,170,255,0.5);
-  --route-minerals: rgba(255,215,0,0.5);
-  --route-agri: rgba(0,204,102,0.5);
+  --bypass: #607D8B;
 }
-body {
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;
   background: var(--bg);
   color: var(--text);
-  font-family: Arial, sans-serif;
-  min-height: 100vh;
-  overflow-x: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+  touch-action: none;
 }
-.header {
-  background: var(--panel);
+#app {
+  width: 100%; height: 100%;
+  display: flex; flex-direction: column;
+}
+header {
+  padding: 16px 20px 12px;
+  background: var(--bg);
   border-bottom: 1px solid var(--border);
-  padding: 10px 15px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  position: sticky;
-  top: 0;
-  z-index: 100;
+  flex-shrink: 0;
+  z-index: 10;
 }
-.header h1 {
-  font-family: 'Courier New', monospace;
-  font-size: 14px;
+header h1 {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 3px;
   color: var(--accent);
-  letter-spacing: 2px;
+  text-transform: uppercase;
 }
-.header span {
-  font-family: 'Courier New', monospace;
-  font-size: 10px;
-  color: var(--text-sec);
+header p {
+  font-size: 11px;
+  color: var(--text2);
+  margin-top: 4px;
+  letter-spacing: 1px;
 }
-.controls {
+#controls {
   display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  padding: 8px;
-  background: var(--panel);
+  gap: 8px;
+  padding: 10px 16px;
+  background: var(--bg);
   border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  flex-shrink: 0;
+  z-index: 10;
 }
-.btn {
-  background: transparent;
+#controls::-webkit-scrollbar { display: none; }
+.toggle-btn {
+  flex-shrink: 0;
+  padding: 10px 18px;
+  border-radius: 8px;
   border: 1px solid var(--border);
-  color: var(--text-sec);
-  padding: 6px 10px;
-  font-size: 10px;
-  font-family: 'Courier New', monospace;
+  background: var(--bg2);
+  color: var(--text2);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1px;
   cursor: pointer;
   transition: all 0.2s;
-  border-radius: 2px;
   min-height: 44px;
-  min-width: 44px;
+  min-width: 80px;
 }
-.btn:hover, .btn.active {
+.toggle-btn.active {
+  background: var(--accent);
   border-color: var(--accent);
-  color: var(--accent);
-  background: rgba(255,102,0,0.1);
+  color: #000;
 }
-.zoom-controls {
-  display: flex;
-  gap: 4px;
-  margin-left: auto;
-}
-.btn-zoom {
-  width: 44px;
-  height: 44px;
-  font-size: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.map-container {
-  width: 100%;
-  overflow: hidden;
+#mapWrap {
+  flex: 1;
   position: relative;
+  overflow: hidden;
+  background: var(--bg);
 }
 #map {
-  display: block;
-  width: 100%;
-  height: auto;
-  min-height: 50vh;
+  width: 100%; height: 100%;
+  cursor: grab;
+  transform-origin: center center;
 }
-.continent { fill: #1a1a1a; stroke: #333; stroke-width: 0.5; }
-.country { fill: #222; stroke: #2a2a2a; stroke-width: 0.3; }
-.ocean { fill: #0a0a0a; }
+#map:active { cursor: grabbing; }
+.continent { fill: #0f0f0f; stroke: #1e1e1e; stroke-width: 0.5; }
+.country { fill: #141414; stroke: #1a1a1a; stroke-width: 0.3; }
+.route {
+  fill: none;
+  stroke-width: 2;
+  opacity: 0.6;
+  pointer-events: stroke;
+  cursor: pointer;
+  transition: opacity 0.3s, stroke-width 0.2s;
+}
+.route:hover { opacity: 1; stroke-width: 3; }
+.route.oil { stroke: var(--oil); }
+.route.gas { stroke: var(--gas); }
+.route.minerals { stroke: var(--minerals); }
+.route.agri { stroke: var(--agri); }
+.route.bypass { stroke: var(--bypass); }
+@keyframes dashFlow {
+  to { stroke-dashoffset: -40; }
+}
+.route.flowing {
+  stroke-dasharray: 8 8;
+  animation: dashFlow 1.5s linear infinite;
+}
 .chokepoint {
   cursor: pointer;
   transition: transform 0.2s;
 }
-.chokepoint:hover { transform: scale(1.3); }
-.chokepoint-pulse {
-  animation: pulse 2s infinite;
-}
 @keyframes pulse {
-  0% { opacity: 0.8; }
-  50% { opacity: 0.3; }
-  100% { opacity: 0.8; }
+  0%, 100% { r: 8; opacity: 1; }
+  50% { r: 14; opacity: 0.4; }
 }
-.resource-zone { cursor: pointer; transition: transform 0.2s; }
-.resource-zone:hover { transform: scale(1.2); }
-.route { pointer-events: stroke; cursor: pointer; }
-.route:hover { stroke-width: 3; }
-.popup-overlay {
-  display: none;
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0,0,0,0.7);
-  z-index: 200;
+.chokepoint-pulse {
+  fill: var(--accent);
+  opacity: 0.3;
+  animation: pulse 2s ease-in-out infinite;
+  pointer-events: none;
 }
-.popup {
-  display: none;
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background: var(--panel);
-  border: 1px solid var(--accent);
-  border-radius: 8px 8px 0 0;
-  padding: 15px;
-  z-index: 201;
+.chokepoint-dot {
+  fill: var(--accent);
+  pointer-events: none;
+}
+.chokepoint:hover .chokepoint-dot { fill: #fff; }
+.zone {
+  cursor: pointer;
+  transition: transform 0.2s, opacity 0.3s;
+  opacity: 0.8;
+}
+.zone:hover { opacity: 1; transform: scale(1.1); }
+@keyframes zoneGlow {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 0.9; }
+}
+.zone-ring {
+  animation: zoneGlow 3s ease-in-out infinite;
+  pointer-events: none;
+}
+.zone-dot { pointer-events: none; }
+#legend {
+  position: absolute;
+  bottom: 20px;
+  left: 16px;
+  background: rgba(10,10,10,0.92);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 16px;
+  backdrop-filter: blur(10px);
+  z-index: 5;
+  min-width: 140px;
+}
+#legend h3 {
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: var(--text2);
+  margin-bottom: 10px;
+  text-transform: uppercase;
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 11px;
+  color: var(--text);
+  font-family: 'Courier New', monospace;
+}
+.legend-item:last-child { margin-bottom: 0; }
+.legend-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.legend-line {
+  width: 16px; height: 3px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+#stats {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: rgba(10,10,10,0.92);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  backdrop-filter: blur(10px);
+  z-index: 5;
+  text-align: right;
+}
+#stats .num {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--accent);
+  font-family: 'Courier New', monospace;
+  line-height: 1;
+}
+#stats .label {
+  font-size: 9px;
+  color: var(--text2);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+.stat-row { display: flex; justify-content: flex-end; gap: 12px; }
+.stat-item { text-align: right; }
+#popup {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  background: rgba(10,10,10,0.97);
+  border-top: 2px solid var(--accent);
+  border-radius: 20px 20px 0 0;
+  padding: 24px 20px 40px;
+  transform: translateY(100%);
+  transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+  z-index: 100;
   max-height: 70vh;
   overflow-y: auto;
-  animation: slideUp 0.3s ease;
+  backdrop-filter: blur(20px);
 }
-@keyframes slideUp {
-  from { transform: translateY(100%); }
-  to { transform: translateY(0); }
+#popup.show { transform: translateY(0); }
+#popupHandle {
+  width: 36px; height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  margin: 0 auto 20px;
 }
-.popup-close {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--text-sec);
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  cursor: pointer;
+#popupHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+#popupTitle {
   font-size: 18px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+#popupType {
+  font-size: 9px;
+  color: var(--text2);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+#closePopup {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--bg2);
+  color: var(--text);
+  font-size: 18px;
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-}
-.popup-close:hover { border-color: var(--accent); color: var(--accent); }
-.popup h2 {
-  font-family: 'Courier New', monospace;
-  font-size: 14px;
-  color: var(--accent);
-  margin-bottom: 10px;
-  padding-right: 40px;
+  flex-shrink: 0;
 }
 .popup-row {
   display: flex;
   justify-content: space-between;
-  padding: 4px 0;
+  align-items: flex-start;
+  padding: 10px 0;
   border-bottom: 1px solid var(--border);
-  font-size: 12px;
+  gap: 12px;
 }
 .popup-row:last-child { border-bottom: none; }
-.popup-label { color: var(--text-sec); font-family: 'Courier New', monospace; }
-.popup-value { color: var(--text); font-family: 'Courier New', monospace; text-align: right; }
-.popup-section {
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--border);
-}
-.popup-section h3 {
+.popup-label {
   font-size: 11px;
+  color: var(--text2);
+  flex-shrink: 0;
+}
+.popup-value {
+  font-size: 12px;
+  font-family: 'Courier New', monospace;
+  color: var(--text);
+  text-align: right;
+}
+.popup-value.highlight { color: var(--accent); }
+.popup-section {
+  margin-top: 16px;
+  padding: 14px;
+  background: rgba(255,102,0,0.08);
+  border: 1px solid rgba(255,102,0,0.2);
+  border-radius: 10px;
+}
+.popup-section h4 {
+  font-size: 9px;
+  letter-spacing: 2px;
   color: var(--accent);
   margin-bottom: 8px;
-  font-family: 'Courier New', monospace;
+  text-transform: uppercase;
 }
-.legend {
-  background: var(--panel);
-  border-top: 1px solid var(--border);
-  padding: 12px;
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 50;
+.popup-section p {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text);
 }
-.legend-toggle {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  cursor: pointer;
-  padding-bottom: 8px;
-}
-.legend-toggle h3 {
-  font-family: 'Courier New', monospace;
-  font-size: 11px;
-  color: var(--text-sec);
-}
-.legend-toggle span { color: var(--text-sec); font-size: 12px; }
-.legend-items {
-  display: none;
-  flex-wrap: wrap;
-  gap: 12px;
-  padding-top: 8px;
-}
-.legend-items.show { display: flex; }
-.legend-item {
+#loading {
+  position: absolute;
+  inset: 0;
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 11px;
-  color: var(--text-sec);
+  justify-content: center;
+  background: var(--bg);
+  z-index: 200;
+  transition: opacity 0.5s;
 }
-.legend-circle {
-  width: 12px;
-  height: 12px;
+#loading.hide { opacity: 0; pointer-events: none; }
+.loader {
+  width: 40px; height: 40px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
   border-radius: 50%;
+  animation: spin 1s linear infinite;
 }
-.legend-line {
-  width: 24px;
-  height: 3px;
-  border-radius: 2px;
-}
-.legend-pulse {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: var(--accent);
-  animation: pulse 2s infinite;
-}
+@keyframes spin { to { transform: rotate(360deg); } }
 @media (min-width: 768px) {
-  .popup {
+  #popup {
+    position: fixed;
+    bottom: auto;
     top: 50%;
     left: 50%;
-    bottom: auto;
-    transform: translate(-50%, -50%);
-    max-width: 400px;
-    border-radius: 8px;
-  }
-  .legend {
-    position: relative;
-    background: var(--panel);
+    transform: translate(-50%, -50%) scale(0.9);
+    width: 440px;
+    border-radius: 16px;
     border: 1px solid var(--border);
-    border-radius: 4px;
-    margin: 10px;
-    max-width: 600px;
-    margin-left: auto;
-    margin-right: auto;
+    border-top: 2px solid var(--accent);
+    max-height: 80vh;
   }
-  .map-container { padding-bottom: 80px; }
+  #popup.show { transform: translate(-50%, -50%) scale(1); }
 }
 </style>
 </head>
 <body>
-<div class="header">
-  <div>
-    <h1>WORLD RESOURCE MAP</h1>
-    <span>STRATEGIC CHOKEPOINTS &amp; SUPPLY ROUTES // 2026</span>
+<div id="app">
+  <header>
+    <h1>Global Resource Flows</h1>
+    <p>Strategic Trade Intelligence — Tap markers to explore</p>
+  </header>
+  <div id="controls">
+    <button class="toggle-btn active" data-layer="routes">Routes</button>
+    <button class="toggle-btn active" data-layer="zones">Zones</button>
+    <button class="toggle-btn active" data-layer="chokepoints">Chokepoints</button>
   </div>
-  <span id="timestamp"></span>
-</div>
-<div class="controls">
-  <button class="btn active" data-toggle="routes">ROUTES</button>
-  <button class="btn active" data-toggle="zones">ZONES</button>
-  <button class="btn active" data-toggle="chokepoints">CHOKEPOINTS</button>
-  <div class="zoom-controls">
-    <button class="btn btn-zoom" id="zoomOut">−</button>
-    <button class="btn btn-zoom" id="zoomIn">+</button>
-  </div>
-</div>
-<div class="map-container">
-  <svg id="map" viewBox="0 0 1000 500" preserveAspectRatio="xMidYMid meet">
-    <defs>
-      <filter id="glow">
-        <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
-        <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
-      </filter>
-    </defs>
-    <!-- Ocean background -->
-    <rect class="ocean" x="0" y="0" width="1000" height="500"/>
-    <!-- World Map - Simplified Mercator -->
-    <g id="world">
-      <!-- North America -->
-      <path class="country" d="M50,80 L180,60 L220,70 L260,50 L280,60 L290,80 L300,100 L310,130 L280,150 L250,140 L230,160 L200,180 L170,200 L140,190 L120,170 L100,150 L80,120 L50,100 Z"/>
-      <path class="country" d="M140,190 L170,200 L200,210 L220,230 L200,250 L170,260 L150,250 L130,230 L120,210 Z"/>
-      <!-- Greenland -->
-      <path class="country" d="M300,30 L360,25 L380,40 L370,60 L340,65 L310,55 Z"/>
-      <!-- Central America -->
-      <path class="country" d="M170,260 L190,270 L210,280 L200,290 L180,285 L170,275 Z"/>
-      <!-- South America -->
-      <path class="country" d="M200,300 L240,290 L270,300 L280,320 L290,350 L270,380 L240,400 L210,390 L190,360 L180,330 L190,310 Z"/>
-      <!-- Europe -->
-      <path class="country" d="M440,80 L480,70 L500,80 L520,90 L530,110 L520,130 L490,140 L460,130 L440,110 Z"/>
-      <path class="country" d="M460,130 L490,140 L510,160 L500,180 L470,185 L450,170 L440,150 Z"/>
-      <!-- Scandinavia -->
-      <path class="country" d="M480,50 L500,40 L520,50 L510,70 L495,75 L480,65 Z"/>
-      <!-- UK -->
-      <path class="country" d="M430,100 L445,95 L450,110 L440,120 L425,115 Z"/>
-      <!-- Africa -->
-      <path class="country" d="M440,200 L500,190 L540,200 L560,230 L550,270 L520,300 L480,320 L440,310 L420,280 L430,240 L440,210 Z"/>
-      <!-- Madagascar -->
-      <path class="country" d="M580,300 L595,295 L600,315 L590,330 L575,325 Z"/>
-      <!-- Middle East -->
-      <path class="country" d="M540,150 L580,140 L610,150 L620,180 L600,200 L570,195 L540,180 L530,165 Z"/>
-      <!-- Russia -->
-      <path class="country" d="M520,40 L700,30 L800,50 L850,80 L820,120 L750,130 L700,120 L650,130 L600,125 L550,110 L520,90 Z"/>
-      <!-- Asia -->
-      <path class="country" d="M650,130 L750,130 L820,150 L850,180 L860,220 L830,250 L780,260 L720,250 L680,230 L650,200 L640,170 L650,140 Z"/>
-      <!-- China -->
-      <path class="country" d="M720,180 L780,170 L820,190 L830,220 L800,250 L750,260 L710,250 L690,220 L700,190 Z"/>
-      <!-- Japan/Korea -->
-      <path class="country" d="M860,170 L880,165 L885,185 L870,195 L855,190 Z"/>
-      <path class="country" d="M850,200 L870,195 L875,210 L860,215 L845,210 Z"/>
-      <!-- Southeast Asia -->
-      <path class="country" d="M780,260 L810,250 L840,260 L850,290 L830,310 L800,320 L770,310 L770,280 Z"/>
-      <!-- India -->
-      <path class="country" d="M640,200 L680,190 L720,200 L730,240 L710,270 L680,280 L650,270 L630,240 L630,210 Z"/>
-      <!-- Australia -->
-      <path class="country" d="M800,340 L860,330 L900,340 L910,370 L890,400 L850,410 L810,400 L790,370 L795,350 Z"/>
-      <!-- New Zealand -->
-      <path class="country" d="M930,400 L945,395 L950,415 L935,420 Z"/>
-      <!-- Brazil (part of SA) already defined -->
-      <!-- Venezuela/Colombia area -->
-      <path class="country" d="M200,260 L240,250 L260,260 L250,280 L220,285 L200,275 Z"/>
-      <!-- Peru -->
-      <path class="country" d="M190,310 L210,300 L230,310 L220,340 L200,350 L180,340 L185,320 Z"/>
-      <!-- Chile -->
-      <path class="country" d="M200,350 L215,345 L220,370 L210,400 L195,410 L190,390 Z"/>
-      <!-- Nigeria -->
-      <path class="country" d="M450,250 L475,245 L485,265 L470,280 L450,275 L445,260 Z"/>
-      <!-- South Africa -->
-      <path class="country" d="M490,360 L520,350 L540,370 L530,400 L500,410 L480,395 L485,375 Z"/>
-      <!-- Ukraine -->
-      <path class="country" d="M530,110 L560,100 L575,120 L565,140 L540,145 L525,130 Z"/>
-      <!-- Kazakhstan -->
-      <path class="country" d="M600,100 L660,90 L690,110 L680,140 L640,150 L600,140 L590,120 Z"/>
-      <!-- Iran -->
-      <path class="country" d="M580,150 L620,140 L650,155 L640,185 L610,195 L580,185 L570,165 Z"/>
-      <!-- Saudi Arabia -->
-      <path class="country" d="M540,180 L580,170 L610,185 L600,220 L560,230 L530,220 L530,200 Z"/>
-      <!-- UAE -->
-      <path class="country" d="M610,200 L630,195 L635,215 L620,225 L608,215 Z"/>
-      <!-- Qatar -->
-      <ellipse class="country" cx="612" cy="210" rx="5" ry="8"/>
-      <!-- Norway/Sweden -->
-      <path class="country" d="M490,55 L510,45 L530,55 L520,80 L500,85 L488,70 Z"/>
-      <!-- Canada -->
-      <path class="country" d="M50,80 L180,60 L220,70 L260,50 L280,60 L260,40 L200,45 L140,50 L80,60 Z"/>
-      <!-- Peru -->
-      <path class="country" d="M190,310 L210,300 L230,310 L220,340 L200,350 L180,340 L185,320 Z"/>
-      <!-- Argentina -->
-      <path class="country" d="M230,380 L260,370 L270,400 L250,430 L220,440 L210,420 L220,400 Z"/>
-      <!-- Congo -->
-      <path class="country" d="M490,270 L520,260 L540,280 L530,310 L500,320 L480,305 L485,285 Z"/>
-      <!-- Indonesia -->
-      <path class="country" d="M780,290 L820,285 L850,295 L840,315 L810,320 L780,310 Z"/>
-      <!-- Philippines -->
-      <path class="country" d="M850,250 L865,245 L870,265 L855,275 L845,265 Z"/>
-    </g>
-    <!-- Shipping Routes -->
-    <g id="routes">
-      <!-- Oil Routes -->
-      <path class="route" data-type="oil" d="M580,200 Q650,150 750,170" stroke="var(--route-oil)" stroke-width="2" fill="none"/>
-      <path class="route" data-type="oil" d="M555,190 Q620,180 700,190" stroke="var(--route-oil)" stroke-width="2" fill="none"/>
-      <path class="route" data-type="oil" d="M590,195 Q700,200 850,170" stroke="var(--route-oil)" stroke-width="2" fill="none"/>
-      <path class="route" data-type="oil" d="M530,220 Q580,250 660,240" stroke="var(--route-oil)" stroke-width="2" fill="none"/>
-      <path class="route" data-type="oil" d="M610,195 Q650,220 700,250" stroke="var(--route-oil)" stroke-width="2" fill="none"/>
-      <path class="route" data-type="oil" d="M220,280 Q300,260 450,240" stroke="var(--route-oil)" stroke-width="2" fill="none"/>
-      <path class="route" data-type="oil" d="M190,340 Q280,320 380,280" stroke="var(--route-oil)" stroke-width="2" fill="none"/>
-      <path class="route" data-type="oil" d="M260,300 Q350,280 450,260" stroke="var(--route-oil)" stroke-width="2" fill="none"/>
-      <path class="route" data-type="oil" d="M350,140 Q420,160 470,180" stroke="var(--route-oil)" stroke-width="2" fill="none"/>
-      <!-- LNG Routes -->
-      <path class="route" data-type="lng" d="M600,195 Q680,160 780,140" stroke="var(--route-lng)" stroke-width="2" fill="none"/>
-      <path class="route" data-type="lng" d="M820,290 Q880,320 900,360" stroke="var(--route-lng)" stroke-width="2" fill="none"/>
-      <path class="route" data-type="lng" d="M220,260 Q320,220 450,160" stroke="var(--route-lng)" stroke-width="2" fill="none"/>
-      <path class="route" data-type="lng" d="M620,220 Q700,200 780,180" stroke="var(--route-lng)" stroke-width="2" fill="none"/>
-      <!-- Minerals Routes -->
-      <path class="route" data-type="minerals" d="M190,340 Q280,300 380,280" stroke="var(--route-minerals)" stroke-width="2" fill="none"/>
-      <path class="route" data-type="minerals" d="M500,280 Q600,260 700,250" stroke="var(--route-minerals)" stroke-width="2" fill="none"/>
-      <path class="route" data-type="minerals" d="M730,250 Q800,280 850,300" stroke="var(--route-minerals)" stroke-width="2" fill="none"/>
-      <path class="route" data-type="minerals" d="M500,300 Q580,280 680,270" stroke="var(--route-minerals)" stroke-width="2" fill="none"/>
-      <!-- Agri Routes -->
-      <path class="route" data-type="agri" d="M530,160 Q500,180 460,200" stroke="var(--route-agri)" stroke-width="2" fill="none"/>
-      <path class="route" data-type="agri" d="M250,280 Q350,260 450,240" stroke="var(--route-agri)" stroke-width="2" fill="none"/>
-      <path class="route" data-type="agri" d="M230,380 Q350,340 460,300" stroke="var(--route-agri)" stroke-width="2" fill="none"/>
-    </g>
-    <!-- Resource Zones -->
-    <g id="zones">
-      <!-- Oil Zones -->
-      <circle class="resource-zone" data-zone="saudi" cx="565" cy="205" r="8" fill="var(--oil)" filter="url(#glow)"/>
-      <circle class="resource-zone" data-zone="kuwait" cx="595" cy="190" r="8" fill="var(--oil)" filter="url(#glow)"/>
-      <circle class="resource-zone" data-zone="iran" cx="630" cy="175" r="8" fill="var(--oil)" filter="url(#glow)"/>
-      <circle class="resource-zone" data-zone="uae" cx="618" cy="208" r="6" fill="var(--oil)" filter="url(#glow)"/>
-      <circle class="resource-zone" data-zone="russia1" cx="650" cy="90" r="10" fill="var(--oil)" filter="url(#glow)"/>
-      <circle class="resource-zone" data-zone="russia2" cx="720" cy="110" r="10" fill="var(--oil)" filter="url(#glow)"/>
-      <circle class="resource-zone" data-zone="permian" cx="130" cy="200" r="8" fill="var(--oil)" filter="url(#glow)"/>
-      <circle class="resource-zone" data-zone="bakken" cx="170" cy="140" r="6" fill="var(--oil)" filter="url(#glow)"/>
-      <circle class="resource-zone" data-zone="venezuela" cx="210" cy="275" r="8" fill="var(--oil)" filter="url(#glow)"/>
-      <circle class="resource-zone" data-zone="nigeria" cx="460" cy="265" r="8" fill="var(--oil)" filter="url(#glow)"/>
-      <circle class="resource-zone" data-zone="brazil" cx="260" cy="320" r="8" fill="var(--oil)" filter="url(#glow)"/>
-      <circle class="resource-zone" data-zone="uk" cx="445" cy="115" r="6" fill="var(--oil)" filter="url(#glow)"/>
-      <!-- LNG Zones -->
-      <circle class="resource-zone" data-zone="qatar" cx="608" cy="210" r="6" fill="var(--lng)" filter="url(#glow)"/>
-      <circle class="resource-zone" data-zone="australia" cx="840" cy="310" r="8" fill="var(--lng)" filter="url(#glow)"/>
-      <circle class="resource-zone" data-zone="usgulf" cx="180" cy="240" r="8" fill="var(--lng)" filter="url(#glow)"/>
-      <circle class="resource-zone" data-zone="yamal" cx="620" cy="55" r="8" fill="var(--lng)" filter="url(#glow)"/>
-      <!-- Minerals Zones -->
-      <circle class="resource-zone" data-zone="chile" cx="205" cy="375" r="6" fill="var(--minerals)" filter="url(#glow)"/>
-      <circle class="resource-zone" data-zone="congo" cx="510" cy="290" r="6" fill="var(--minerals)" filter="url(#glow)"/>
-      <circle class="resource-zone" data-zone="china" cx="760" cy="220" r="10" fill="var(--minerals)" filter="url(#glow)"/>
-      <circle class="resource-zone" data-zone="indonesia" cx="810" cy="300" r="6" fill="var(--minerals)" filter="url(#glow)"/>
-      <circle class="resource-zone" data-zone="safrica" cx="510" cy="380" r="6" fill="var(--minerals)" filter="url(#glow)"/>
-      <!-- Agri Zones -->
-      <circle class="resource-zone" data-zone="ukraine" cx="555" cy="130" r="6" fill="var(--agri)" filter="url(#glow)"/>
-      <circle class="resource-zone" data-zone="usmidwest" cx="160" cy="180" r="8" fill="var(--agri)" filter="url(#glow)"/>
-      <circle class="resource-zone" data-zone="brazilagri" cx="250" cy="340" r="8" fill="var(--agri)" filter="url(#glow)"/>
-      <circle class="resource-zone" data-zone="argentina" cx="240" cy="400" r="6" fill="var(--agri)" filter="url(#glow)"/>
-    </g>
-    <!-- Chokepoints -->
-    <g id="chokepoints">
-      <g class="chokepoint" data-chokepoint="hormuz" transform="translate(648,195)">
-        <circle class="chokepoint-pulse" r="10" fill="rgba(255,102,0,0.3)"/>
-        <circle r="6" fill="var(--accent)" filter="url(#glow)"/>
-      </g>
-      <g class="chokepoint" data-chokepoint="malacca" transform="translate(810,290)">
-        <circle class="chokepoint-pulse" r="10" fill="rgba(255,102,0,0.3)"/>
-        <circle r="6" fill="var(--accent)" filter="url(#glow)"/>
-      </g>
-      <g class="chokepoint" data-chokepoint="suez" transform="translate(530,200)">
-        <circle class="chokepoint-pulse" r="10" fill="rgba(255,102,0,0.3)"/>
-        <circle r="6" fill="var(--accent)" filter="url(#glow)"/>
-      </g>
-      <g class="chokepoint" data-chokepoint="panama" transform="translate(200,280)">
-        <circle class="chokepoint-pulse" r="10" fill="rgba(255,102,0,0.3)"/>
-        <circle r="6" fill="var(--accent)" filter="url(#glow)"/>
-      </g>
-      <g class="chokepoint" data-chokepoint="bab" transform="translate(600,230)">
-        <circle class="chokepoint-pulse" r="10" fill="rgba(255,102,0,0.3)"/>
-        <circle r="6" fill="var(--accent)" filter="url(#glow)"/>
-      </g>
-      <g class="chokepoint" data-chokepoint="danish" transform="translate(490,90)">
-        <circle class="chokepoint-pulse" r="10" fill="rgba(255,102,0,0.3)"/>
-        <circle r="6" fill="var(--accent)" filter="url(#glow)"/>
-      </g>
-      <g class="chokepoint" data-chokepoint="bosphorus" transform="translate(545,135)">
-        <circle class="chokepoint-pulse" r="10" fill="rgba(255,102,0,0.3)"/>
-        <circle r="6" fill="var(--accent)" filter="url(#glow)"/>
-      </g>
-      <g class="chokepoint" data-chokepoint="gibraltar" transform="translate(440,165)">
-        <circle class="chokepoint-pulse" r="10" fill="rgba(255,102,0,0.3)"/>
-        <circle r="6" fill="var(--accent)" filter="url(#glow)"/>
-      </g>
-      <g class="chokepoint" data-chokepoint="cape" transform="translate(510,380)">
-        <circle class="chokepoint-pulse" r="10" fill="rgba(255,102,0,0.3)"/>
-        <circle r="6" fill="var(--accent)" filter="url(#glow)"/>
-      </g>
-      <g class="chokepoint" data-chokepoint="taiwan" transform="translate(855,220)">
-        <circle class="chokepoint-pulse" r="10" fill="rgba(255,102,0,0.3)"/>
-        <circle r="6" fill="var(--accent)" filter="url(#glow)"/>
-      </g>
-      <g class="chokepoint" data-chokepoint="torres" transform="translate(860,335)">
-        <circle class="chokepoint-pulse" r="10" fill="rgba(255,102,0,0.3)"/>
-        <circle r="6" fill="var(--accent)" filter="url(#glow)"/>
-      </g>
-      <g class="chokepoint" data-chokepoint="lombok" transform="translate(830,305)">
-        <circle class="chokepoint-pulse" r="10" fill="rgba(255,102,0,0.3)"/>
-        <circle r="6" fill="var(--accent)" filter="url(#glow)"/>
-      </g>
-    </g>
-  </svg>
-</div>
-<div class="popup-overlay" id="popupOverlay"></div>
-<div class="popup" id="popup">
-  <button class="popup-close" onclick="closePopup()">×</button>
-  <h2 id="popupTitle">Title</h2>
-  <div id="popupContent"></div>
-</div>
-<div class="legend" id="legend">
-  <div class="legend-toggle" onclick="toggleLegend()">
-    <h3>LEGEND</h3>
-    <span id="legendArrow">▲</span>
-  </div>
-  <div class="legend-items" id="legendItems">
-    <div class="legend-item"><div class="legend-pulse"></div><span>Chokepoint</span></div>
-    <div class="legend-item"><div class="legend-circle" style="background:var(--oil)"></div><span>Oil</span></div>
-    <div class="legend-item"><div class="legend-circle" style="background:var(--lng)"></div><span>LNG</span></div>
-    <div class="legend-item"><div class="legend-circle" style="background:var(--minerals)"></div><span>Minerals</span></div>
-    <div class="legend-item"><div class="legend-circle" style="background:var(--agri)"></div><span>Agriculture</span></div>
-    <div class="legend-item"><div class="legend-line" style="background:var(--route-oil)"></div><span>Oil Route</span></div>
-    <div class="legend-item"><div class="legend-line" style="background:var(--route-lng)"></div><span>LNG Route</span></div>
-    <div class="legend-item"><div class="legend-line" style="background:var(--route-minerals)"></div><span>Minerals Route</span></div>
-    <div class="legend-item"><div class="legend-line" style="background:var(--route-agri)"></div><span>Agri Route</span></div>
+  <div id="mapWrap">
+    <svg id="map" viewBox="0 0 1000 500" preserveAspectRatio="xMidYMid meet">
+      <defs>
+        <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="3" result="blur"/>
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+      <g id="worldMap"></g>
+      <g id="routesLayer"></g>
+      <g id="zonesLayer"></g>
+      <g id="chokepointsLayer"></g>
+    </svg>
+    <div id="legend">
+      <h3>Legend</h3>
+      <div class="legend-item"><div class="legend-line" style="background:var(--oil)"></div> Oil</div>
+      <div class="legend-item"><div class="legend-line" style="background:var(--gas)"></div> LNG/Gas</div>
+      <div class="legend-item"><div class="legend-line" style="background:var(--minerals)"></div> Minerals</div>
+      <div class="legend-item"><div class="legend-line" style="background:var(--agri)"></div> Agriculture</div>
+      <div class="legend-item"><div class="legend-line" style="background:var(--bypass)"></div> Bypass Route</div>
+      <div class="legend-item" style="margin-top:8px"><div class="legend-dot" style="background:var(--accent)"></div> Chokepoint</div>
+    </div>
+    <div id="stats">
+      <div class="stat-row">
+        <div class="stat-item"><div class="num">12</div><div class="label">Chokepoints</div></div>
+        <div class="stat-item"><div class="num">24</div><div class="label">Zones</div></div>
+        <div class="stat-item"><div class="num">18</div><div class="label">Routes</div></div>
+      </div>
+    </div>
+    <div id="popup">
+      <div id="popupHandle"></div>
+      <div id="popupHeader">
+        <div>
+          <div id="popupTitle">Title</div>
+          <div id="popupType">Type</div>
+        </div>
+        <button id="closePopup">×</button>
+      </div>
+      <div id="popupBody"></div>
+    </div>
   </div>
 </div>
+<div id="loading"><div class="loader"></div></div>
 <script>
-const chokepointData = {
-  hormuz: {
-    name: "STRAIT OF HORUZ",
-    stats: [
-      { label: "Volume", value: "21.2 MBD" },
-      { label: "World Oil %", value: "20%" },
-      { label: "Width", value: "34 mi" },
-      { label: "Depth", value: "230 ft" }
-    ],
-    risk: "HIGH — Iran tensions, Houthi扩展",
-    whatIf: "Oil spike $30-50/barrel, Asian refineries forced to draw reserves"
-  },
-  malacca: {
-    name: "STRAIT OF MALACCA",
-    stats: [
-      { label: "Volume", value: "16.5 MBD" },
-      { label: "World Trade %", value: "25%" },
-      { label: "Width", value: "2.8 mi" },
-      { label: "Traffic", value: "140k vessels/year" }
-    ],
-    risk: "MODERATE — Piracy, congestion",
-    whatIf: "Container rates 5x, electronics shortage globally"
-  },
-  suez: {
-    name: "SUEZ CANAL",
-    stats: [
-      { label: "Volume", value: "12.5 MBD" },
-      { label: "World Trade %", value: "12%" },
-      { label: "Daily Value", value: "$9.6B" },
-      { label: "Transit Time", value: "11-16 hrs" }
-    ],
-    risk: "MODERATE — Red Sea instability",
-    whatIf: "Forces 6,000 mi Cape route, $15/barrel运费增加"
-  },
-  panama: {
-    name: "PANAMA CANAL",
-    stats: [
-      { label: "Volume", value: "2.5 MBD" },
-      { label: "World Trade %", value: "5%" },
-      { label: "Capacity", value: "40 ships/day" },
-      { label: " draught Limit", value: "50 ft" }
-    ],
-    risk: "HIGH — Climate-driven water crisis",
-    whatIf: "US-Asia shipping costs +$3-5M per voyage, reshapes trade routes"
-  },
-  bab: {
-    name: "BAB EL-MANDEB",
-    stats: [
-      { label: "Volume", value: "8.8 MBD" },
-      { label: "EU LNG %", value: "30%" },
-      { label: "Width", value: "20 mi" },
-      { label: "Chokepoint Risk", value: "HIGH" }
-    ],
-    risk: "HIGH — Yemen conflict proximity",
-    whatIf: "EU LNG prices spike 40%, winter energy crisis"
-  },
-  danish: {
-    name: "DANISH STRAITS",
-    stats: [
-      { label: "Volume", value: "3.2 MBD" },
-      { label: "Russian Gas %", value: "60%" },
-      { label: "Ships/day", value: "220" },
-      { label: "Regulated", value: "Yes" }
-    ],
-    risk: "LOW-MEDIUM — Ukraine conflict escalation",
-    whatIf: "European gas storage draws faster, industrial curtailment"
-  },
-  bosphorus: {
-    name: "BOSPHORUS",
-    stats: [
-      { label: "Volume", value: "2.9 MBD" },
-      { label: "Black Sea Access", value: "100%" },
-      { label: "Width", value: "0.5-2 mi" },
-      { label: "Traffic", value: "45k vessels/year" }
-    ],
-    risk: "MEDIUM — Turkey-Russia dynamics",
-    whatIf: "Ukrainian grain exports halt, global food prices spike"
-  },
-  gibraltar: {
-    name: "GIBRALTAR",
-    stats: [
-      { label: "Med Access", value: "100%" },
-      { label: "Ships/day", value: "150" },
-      { label: "Width", value: "8 mi" },
-      { label: "Depth", value: "1,200 ft" }
-    ],
-    risk: "LOW — Brexit friction",
-    whatIf: "Mediterranean shipping reroutes to Suez, +3 days"
-  },
-  cape: {
-    name: "CAPE OF GOOD HOPE",
-    stats: [
-      { label: "Bypass Route", value: "Yes" },
-      { label: "Added Distance", value: "6,000 mi" },
-      { label: "Added Time", value: "10-14 days" },
-      { label: "Traffic", value: "Rising" }
-    ],
-    risk: "LOW — Weather primary risk",
-    whatIf: "New normal for Red Sea avoidance, global supply chain costs +$15B/yr"
-  },
-  taiwan: {
-    name: "TAIWAN STRAIT",
-    stats: [
-      { label: "Chip Trade", value: "$2.5T" },
-      { label: "TSMC Revenue", value: "$70B" },
-      { label: "Width", value: "110 mi" },
-      { label: "Military Risk", value: "HIGH" }
-    ],
-    risk: "CRITICAL — China tensions",
-    whatIf: "Global chip shortage, every industry affected, recession trigger"
-  },
-  torres: {
-    name: "TORRES STRAIT",
-    stats: [
-      { label: "Aus-Asia Route", value: "Primary" },
-      { label: "Width", value: "95 mi" },
-      { label: "Traffic", value: "50 vessels/week" },
-      { label: "Depth", value: "50 ft" }
-    ],
-    risk: "LOW — PNG relations",
-    whatIf: "Australia-Asia trade delays, coal exports affected"
-  },
-  lombok: {
-    name: "LOMBOK STRAIT",
-    stats: [
-      { label: "Alt Route", value: "Malacca bypass" },
-      { label: "Width", value: "25 mi" },
-      { label: "Depth", value: "1,300 ft" },
-      { label: "Traffic", value: "Growing" }
-    ],
-    risk: "LOW — Natural factors",
-    whatIf: "Malacca alternatives viable, regional shipping resilient"
+// ─── World Map Data ───────────────────────────────────────────────
+const WORLD = [
+  {type:"country",path:"M503,101L508,96L514,92L520,87L526,83L530,83L534,85L540,82L545,80L550,76L555,74L560,72L565,70L570,68L575,67L580,66L585,65L590,63L595,61L600,60L605,59L610,57L615,55L620,54L625,53L630,52L635,51L640,50L645,50L650,50L655,50L660,51L665,52L670,53L675,54L680,55L685,57L690,58L695,60L700,62L705,64L710,66L715,68L720,70L725,73L730,75L735,77L740,79L745,82L750,84L755,86L760,88L765,91L770,93L775,95L780,97L785,100L790,102L795,104L800,106L805,108L810,110L815,112L820,114L825,116L830,118L835,120L840,122L845,124L850,126L855,128L860,130L865,132L870,134L875,136L880,138L885,140L890,142L895,144L900,146L905,148L910,150L915,152L920,154L925,156L930,158L935,160L940,162L945,164L950,166L955,168L960,170L965,172L970,174L975,176L980,178L985,180L990,182L995,184L1000,186L1005,188L1010,190L1015,192L1020,194L1025,196L1030,198L1035,200L1040,202L1045,204L1050,206L1055,208L1060,210L1065,212L1070,214L1075,216L1080,218L1085,220L1090,222L1095,224L1100,226L1105,228L1110,230L1115,232L1120,234L1125,236L1130,238L1135,240L1140,242L1145,244L1150,246L1155,248L1160,250L1165,252L1170,254L1175,256L1180,258L1185,260L1190,262L1195,264L1200,266L1205,268L1210,270L1215,272L1220,274L1225,276L1230,278L1235,280L1240,282L1245,284L1250,286L1255,288L1260,290L1265,292L1270,294L1275,296L1280,298L1285,300L1290,302L1295,304L1300,306L1305,308L1310,310L1315,312L1320,314L1325,316L1330,318L1335,320L1340,322L1345,324L1350,326L1355,328L1360,330L1365,332L1370,334L1375,336L1380,338L1385,340L1390,342L1395,344L1400,346L1405,348L1410,350L1415,352L1420,354L1425,356L1430,358L1435,360L1440,362L1445,364L1450,366L1455,368L1460,370L1465,372L1470,374L1475,376L1480,378L1485,380L1490,382L1495,384L1500,386L1505,388L1510,390L1515,392L1520,394L1525,396L1530,398L1535,400L1540,402L1545,404L1550,406L1555,408L1560,410L1565,412L1570,414L1575,416L1580,418L1585,420L1590,422L1595,424L1600,426L1605,428L1610,430L1615,432L1620,434L1625,436L1630,438L1635,440L1640,442L1645,444L1650,446L1655,448L1660,450L1665,452L1670,454L1675,456L1680,458L1685,460L1690,462L1695,464L1700,466L1705,468L1710,470L1715,472L1720,474L1725,476L1730,478L1735,480L1740,482L1745,484L1750,486L1755,488L1760,490L1765,492L1770,494L1775,496L1780,498L1785,500L1790,498L1795,496L1800,494L1805,492L1810,490L1815,488L1820,486L1825,484L1830,482L1835,480L1840,478L1845,476L1850,474L1855,472L1860,470L1865,468L1870,466L1875,464L1880,462L1885,460L1890,458L1895,456L1900,454L1905,452L1910,450L1915,448L1920,446L1925,444L1930,442L1935,440L1940,438L1945,436L1950,434L1955,432L1960,430L1965,428L1970,426L1975,424L1980,422L1985,420L1990,418L1995,416L2000,414L2005,412L2010,410L2015,408L2020,406L2025,404L2030,402L2035,400L2040,398L2045,396L2050,394L2055,392L2060,390L2065,388L2070,386L2075,384L2080,382L2085,380L2090,378L2095,376L2100,374L2105,372L2110,370L2115,368L2120,366L2125,364L2130,362L2135,360L2140,358L2145,356L2150,354L2155,352L2160,350L2165,348L2170,346L2175,344L2180,342L2185,340L2190,338L2195,336L2200,334L2205,332L2210,330L2215,328L2220,326L2225,324L2230,322L2235,320L2240,318L2245,316L2250,314L2255,312L2260,310L2265,308L2270,306L2275,304L2280,302L2285,300L2290,298L2295,296L2300,294L2305,292L2310,290L2315,288L2320,286L2325,284L2330,282L2335,280L2340,278L2345,276L2350,274L2355,272L2360,270L2365,268L2370,266L2375,264L2380,262L2385,260L2390,258L2395,256L2400,254L2405,252L2410,250L2415,248L2420,246L2425,244L2430,242L2435,240L2440,238L2445,236L2450,234L2455,232L2460,230L2465,228L2470,226L2475,224L2480,222L2485,220L2490,218L2495,216L2500,214L2505,212L2510,210L2515,208L2520,206L2525,204L2530,202L2535,200L2540,198L2545,196L2550,194L2555,192L2560,190L2565,188L2570,186L2575,184L2580,182L2585,180L2590,178L2595,176L2600,174L2605,172L2610,170L2615,168L2620,166L2625,164L2630,162L2635,160L2640,158L2645,156L2650,154L2655,152L2660,150L2665,148L2670,146L2675,144L2680,142L2685,140L2690,138L2695,136L2700,134L2705,132L2710,130L2715,128L2720,126L2725,124L2730,122L2735,120L2740,118L2745,116L2750,114L2755,112L2760,110L2765,108L2770,106L2775,104L2780,102L2785,100L2790,98L2795,96L2800,94L2805,92L2810,90L2815,88L2820,86L2825,84L2830,82L2835,80L2840,78L2845,76L2850,74L2855,72L2860,70L2865,68L2870,66L2875,64L2880,62L2885,60L2890,58L2895,56L2900,54L2905,52L2910,50L2915,48L2920,46L2925,44L2930,42L2935,40L2940,38L2945,36L2950,34L2955,32L2960,30L2965,28L2970,26L2975,24L2980,22L2985,20L2990,18L2995,16L3000,14L3005,12L3010,10L3015,8L3020,6L3025,4L3030,2L3035,0L3040,0L3045,2L3050,4L3055,6L3060,8L3065,10L3070,12L3075,14L3080,16L3085,18L3090,20L3095,22L3100,24L3105,26L3110,28L3115,30L3120,32L3125,34L3130,36L3135,38L3140,40L3145,42L3150,44L3155,46L3160,48L3165,50L3170,52L3175,54L3180,56L3185,58L3190,60L3195,62L3200,64L3205,66L3210,68L3215,70L3220,72L3225,74L3230,76L3235,78L3240,80L3245,82L3250,84L3255,86L3260,88L3265,90L3270,92L3275,94L3280,96L3285,98L3290,100L3295,102L3300,104L3305,106L3310,108L3315,110L3320,112L3325,114L3330,116L3335,118L3340,120L3345,122L3350,124L3355,126L3360,128L3365,130L3370,132L3375,134L3380,136L3385,138L3390,140L3395,142L3400,144L3405,146L3410,148L3415,150L3420,152L3425,154L3430,156L3435,158L3440,160L3445,162L3450,164L3455,166L3460,168L3465,170L3470,172L3475,174L3480,176L3485,178L3490,180L3495,182L3500,184L3505,186L3510,188L3515,190L3520,192L3525,194L3530,196L3535,198L3540,200L3545,202L3550,204L3555,206L3560,208L3565,210L3570,212L3575,214L3580,216L3585,218L3590,220L3595,222L3600,224L3605,226L3610,228L3615,230L3620,232L3625,234L3630,236L3635,238L3640,240L3645,242L3650,244L3655,246L3660,248L3665,250L3670,252L3675,254L3680,256L3685,258L3690,260L3695,262L3700,264L3705,266L3710,268L3715,270L3720,272L3725,274L3730,276L3735,278L3740,280L3745,282L3750,284L3755,286L3760,288L3765,290L3770,292L3775,294L3780,296L3785,298L3790,300L3795,302L3800,304L3805,306L3810,308L3815,310L3820,312L3825,314L3830,316L3835,318L3840,320L3845,322L3850,324L3855,326L3860,328L3865,330L3870,332L3875,334L3880,336L3885,338L3890,340L3895,342L3900,344L3905,346L3910,348L3915,350L3920,352L3925,354L3930,356L3935,358L3940,360L3945,362L3950,364L3955,366L3960,368L3965,370L3970,372L3975,374L3980,376L3985,378L3990,380L3995,382L4000,384L4005,386L4010,388L4015,390L4020,392L4025,394L4030,396L4035,398L4040,400L4045,402L4050,404L4055,406L4060,408L4065,410L4070,412L4075,414L4080,416L4085,418L4090,420L4095,422L4100,424L4105,426L4110,428L4115,430L4120,432L4125,434L4130,436L4135,438L4140,440L4145,442L4150,444L4155,446L4160,448L4165,450L4170,452L4175,454L4180,456L4185,458L4190,460L4195,462L4200,464L4205,466L4210,468L4215,470L4220,472L4225,474L4230,476L4235,478L4240,480L4245,482L4250,484L4255,486L4260,488L4265,490L4270,492L4275,494L4280,496L4285,498L4290,500L4295,500L4300,498L4305,496L4310,494L4315,492L4320,490L4325,488L4330,486L4335,484L4340,482L4345,480L4350,478L4355,476L4360,474L4365,472L4370,470L4375,468L4380,466L4385,464L4390,462L4395,460L4400,458L4405,456L4410,454L4415,452L4420,450L4425,448L4430,446L4435,444L4440,442L4445,440L4450,438L4455,436L4460,434L4465,432L4470,430L4475,428L4480,426L4485,424L4490,422L4495,420L4500,418L4505,416L4510,414L4515,412L4520,410L4525,408L4530,406L4535,404L4540,402L4545,400L4550,398L4555,396L4560,394L4565,392L4570,390L4575,388L4580,386L4585,384L4590,382L4595,380L4600,378L4605,376L4610,374L4615,372L4620,370L4625,368L4630,366L4635,364L4640,362L4645,360L4650,358L4655,356L4660,354L4665,352L4670,350L4675,348L4680,346L4685,344L4690,342L4695,340L4700,338L4705,336L4710,334L4715,332L4720,330L4725,328L4730,326L4735,324L4740,322L4745,320L4750,318L4755,316L4760,314L4765,312L4770,310L4775,308L4780,306L4785,304L4790,302L4795,300L4800,298L4805,296L4810,294L4815,292L4820,290L4825,288L4830,286L4835,284L4840,282L4845,280L4850,278L4855,276L4860,274L4865,272L4870,270L4875,268L4880,266L4885,264L4890,262L4895,260L4900,258L4905,256L4910,254L4915,252L4920,250L4925,248L4930,246L4935,244L4940,242L4945,240L4950,238L4955,236L4960,234L4965,232L4970,230L4975,228L4980,226L4985,224L4990,222L4995,220L5000,218Z"}
+];
+// ─── Simplified World Map ─────────────────────────────────────────
+const SVG_NS = 'http://www.w3.org/2000/svg';
+function lon2x(lon) { return (lon + 180) * (1000/360); }
+function lat2y(lat) { return (180 - (lat + 90)) * (500/180); }
+
+// Create world map from GeoJSON-like simplified polygons
+const worldMap = document.getElementById('worldMap');
+const continentData = [
+  {name:'N. America', path:'M80,50L100,45L130,42L160,45L190,50L210,55L230,60L250,70L260,80L250,100L240,120L220,135L200,145L180,150L160,145L140,140L120,135L100,130L85,120L75,100L70,80L75,60Z'},
+  {name:'S. America', path:'M200,200L220,190L240,195L260,210L270,230L265,260L250,290L230,320L210,350L190,370L175,380L165,370L160,340L165,310L170,280L175,250L180,220L190,205Z'},
+  {name:'Europe', path:'M430,60L450,55L470,58L490,60L510,65L525,70L540,75L550,80L555,88L560,95L555,105L545,110L535,115L520,118L505,120L490,118L475,115L460,110L445,105L435,95L430,80L430,65Z'},
+  {name:'Africa', path:'M440,150L460,140L480,135L510,140L540,150L560,165L570,185L575,210L570,240L560,270L540,300L515,330L490,350L465,360L445,355L430,335L420,305L415,275L420,245L425,215L430,185L435,165Z'},
+  {name:'Asia', path:'M560,45L590,40L620,38L660,42L700,48L740,55L780,62L820,70L860,78L900,85L930,92L950,100L960,110L965,125L960,140L950,155L935,170L915,185L890,200L860,215L830,228L800,240L770,250L740,258L710,265L680,270L650,272L620,270L590,265L560,258L540,248L530,235L525,220L530,205L540,190L555,175L570,160L580,145L585,130L580,115L570,100L560,85L555,70L555,55Z'},
+  {name:'ME', path:'M520,120L545,115L565,120L580,135L585,150L580,165L565,175L545,180L530,175L515,165L510,150L515,135Z'},
+  {name:'SE Asia', path:'M720,200L750,195L780,200L800,215L810,235L805,255L785,270L760,280L740,278L720,268L710,250L712,230L715,215Z'},
+  {name:'Australia', path:'M780,300L810,295L840,300L860,315L865,340L855,365L830,385L800,395L775,390L760,370L758,345L765,320L770,305Z'},
+  {name:'Greenland', path:'M300,20L340,15L370,20L380,35L375,50L355,55L330,55L310,45L300,30Z'},
+  {name:'Japan', path:'M870,120L885,115L895,122L892,135L880,140L870,135L868,125Z'},
+  {name:'UK', path:'M410,72L420,68L425,75L420,82L412,83L408,78Z'},
+  {name:'Indonesia', path:'M760,260L780,255L800,260L810,270L805,282L785,288L765,285L755,275Z'},
+];
+continentData.forEach(c => {
+  const path = document.createElementNS(SVG_NS, 'path');
+  path.setAttribute('d', c.path);
+  path.setAttribute('class', 'continent');
+  path.setAttribute('id', c.name.replace(/ /g,'_'));
+  worldMap.appendChild(path);
+});
+// ─── Routes ───────────────────────────────────────────────────────
+const routes = [
+  {name:'Gulf→Asia',type:'oil',d:'M565,160Q680,140,860,160',flowing:true},
+  {name:'Gulf→Suez→Europe',type:'oil',d:'M565,160Q550,130,490,110',flowing:true},
+  {name:'Gulf→Cape→Europe',type:'bypass',d:'M565,160Q620,400,490,100',flowing:false},
+  {name:'Russia→Europe',type:'gas',d:'M580,85Q530,90,470,100',flowing:true},
+  {name:'US→Panama→Asia',type:'gas',d:'M170,140Q250,130,760,200',flowing:true},
+  {name:'US→Cape→Asia',type:'bypass',d:'M170,140Q200,400,760,200',flowing:false},
+  {name:'Australia→China',type:'minerals',d:'M800,320Q820,260,860,160',flowing:true},
+  {name:'Brazil→China',type:'agri',d:'M230,300Q500,350,860,160',flowing:true},
+  {name:'Argentina→China',type:'agri',d:'M210,360Q520,380,860,160',flowing:false},
+  {name:'Ukraine→World',type:'agri',d:'M530,100Q560,150,580,160',flowing:false},
+  {name:'Norway→Europe',type:'gas',d:'M460,70Q470,85,490,100',flowing:true},
+  {name:'Nigeria→Europe',type:'oil',d:'M450,200Q460,140,490,110',flowing:false},
+  {name:'Venezuela→US',type:'oil',d:'M230,230Q200,180,170,140',flowing:false},
+  {name:'Qatar→World',type:'gas',d:'M600,165Q620,200,750,230',flowing:true},
+  {name:'Chile→China',type:'minerals',d:'M220,310Q550,350,860,160',flowing:false},
+  {name:'S. Africa→China',type:'minerals',d:'M510,340Q680,300,860,160',flowing:false},
+  {name:'Indonesia→China',type:'minerals',d:'M780,260Q820,210,860,160',flowing:true},
+  {name:'Canada→Europe',type:'oil',d:'M140,80Q300,60,470,100',flowing:false},
+];
+const routesLayer = document.getElementById('routesLayer');
+routes.forEach((r,i) => {
+  const path = document.createElementNS(SVG_NS, 'path');
+  path.setAttribute('d', r.d);
+  path.setAttribute('class', 'route '+r.type+(r.flowing?' flowing':''));
+  path.setAttribute('data-route', i);
+  path.setAttribute('vector-effect', 'non-scaling-stroke');
+  routesLayer.appendChild(path);
+});
+// ─── Zones ────────────────────────────────────────────────────────
+const zones = [
+  {id:'saudi',name:'Saudi Arabia Oil',x:580,y:155,r:14,color:'var(--oil)',resource:'Oil',extractor:'Saudi Aramco',capacity:'10M bbl/day',dest:'Asia 65%, US 15%, Europe 12%'},
+  {id:'russia',name:'Russia Oil & Gas',x:580,y:85,r:14,color:'var(--gas)',resource:'Oil & Gas',extractor:'Rosneft, Gazprom, Lukoil',capacity:'10M bbl/day oil, 700B m³ gas',dest:'Europe 55%, China 25%, Turkey 8%'},
+  {id:'uspermian',name:'US Permian Basin',x:130,y:160,r:12,color:'var(--oil)',resource:'Oil',extractor:'Exxon, Chevron, Pioneer',capacity:'5M bbl/day',dest:'Gulf Coast refineries, exports'},
+  {id:'qatar',name:'Qatar LNG',x:600,y:165,r:10,color:'var(--gas)',resource:'LNG',extractor:'QatarEnergy',capacity:'77 MTPA LNG',dest:'Asia 70%, Europe 20%'},
+  {id:'australia',name:'Australia Minerals',x:800,y:320,r:12,color:'var(--minerals)',resource:'Iron Ore, Coal, LNG',extractor:'Rio Tinto, BHP, Woodside',capacity:'900M tons iron ore/yr',dest:'China 80%, Japan 8%'},
+  {id:'brazil',name:'Brazil Pre-Salt Oil',x:240,y:280,r:11,color:'var(--oil)',resource:'Oil',extractor:'Petrobras',capacity:'3.4M bbl/day',dest:'China 40%, US 15%, Europe 12%'},
+  {id:'china',name:'China Manufacturing',x:800,y:155,r:13,color:'var(--minerals)',resource:'Rare Earths, Steel',extractor:'China Minmetals, Baosteel',capacity:'60% global rare earths',dest:'Global exports, domestic manufacturing'},
+  {id:'ukraine',name:'Ukraine Agriculture',x:530,y:100,r:10,color:'var(--agri)',resource:'Wheat, Corn, Sunflower',extractor:'NIBULON,Kernel',capacity:'25M tons wheat/yr',dest:'Europe 40%, Asia 35%, Africa 15%'},
+  {id:'usmidwest',name:'US Midwest Agriculture',x:160,y:130,r:12,color:'var(--agri)',resource:'Corn, Wheat, Soybeans',extractor:'ADM, Cargill',capacity:'400M tons corn/yr',dest:'Export 50%, Domestic 50%'},
+  {id:'chile',name:'Chile Lithium',x:220,y:310,r:9,color:'var(--minerals)',resource:'Lithium, Copper',extractor:'SQM, Codelco',capacity:'40% global lithium',dest:'China 60%, US 15%, Japan 10%'},
+  {id:'congo',name:'Congo Cobalt',x:510,y:240,r:9,color:'var(--minerals)',resource:'Cobalt, Copper',extractor:'Glencore, Ivanhoe Mines',capacity:'120K tons cobalt/yr',dest:'China 70%, refined globally'},
+  {id:'indonesia',name:'Indonesia Nickel',x:780,y:250,r:10,color:'var(--minerals)',resource:'Nickel',extractor:'Freeport, Antam',capacity:'1.6M tons nickel/yr',dest:'China 55%, Japan 15%, US 8%'},
+  {id:'uk',name:'UK North Sea Oil',x:440,y:70,r:8,color:'var(--oil)',resource:'Oil & Gas',extractor:'Shell, BP, Equinor',capacity:'1.5M bbl/day',dest:'Europe domestic, exports'},
+  {id:'norway',name:'Norway Oil & Gas',x:470,y:62,r:8,color:'var(--gas)',resource:'Oil & Gas',extractor:'Equinor, Aker BP',capacity:'1.8M bbl/day oil, 120B m³ gas',dest:'Europe exports'},
+  {id:'nigeria',name:'Nigeria Oil',x:450,y:215,r:9,color:'var(--oil)',resource:'Oil',extractor:'Shell, ExxonMobil, Total',capacity:'1.5M bbl/day',dest:'Europe 45%, US 25%, Asia 15%'},
+  {id:'venezuela',name:'Venezuela Heavy Oil',x:230,y:230,r:9,color:'var(--oil)',resource:'Oil',extractor:'PDVSA',capacity:'0.9M bbl/day',dest:'US 40%, India 20%, China 15%'},
+  {id:'usgulf',name:'US Gulf LNG',x:170,y:175,r:9,color:'var(--gas)',resource:'LNG',extractor:'Cheniere, Sabine Pass',capacity:'14 Bcf/day',dest:'Europe 50%, Asia 35%'},
+  {id:'yamal',name:'Russia Yamal LNG',x:560,y:55,r:8,color:'var(--gas)',resource:'LNG',extractor:'Novatek',capacity:'19 MTPA',dest:'Europe (historically), China (now)'},
+  {id:'baku',name:'Caspian Oil',x:610,y:105,r:8,color:'var(--oil)',resource:'Oil',extractor:'SOCAR, BP',capacity:'1M bbl/day',dest:'Europe via BTC pipeline'},
+  {id:'germany',name:'Germany Industry',x:480,y:78,r:7,color:'var(--minerals)',resource:'Coal, Steel',extractor:'ThyssenKrupp, RWE',capacity:'Heavy industry hub',dest:'European manufacturing'},
+  {id:'ukrainegrain',name:'Ukraine Grain Corridor',x:540,y:108,r:7,color:'var(--agri)',resource:'Wheat, Corn',extractor:'Ukrainian collectives',capacity:'25 MMT/yr',dest:'Europe 40%, Asia 35%'},
+  {id:'argentina',name:'Argentina Agriculture',x:220,y:340,r:9,color:'var(--agri)',resource:'Soybeans, Beef',extractor:'ACA, Cresud',capacity:'55M tons soy/yr',dest:'China 35%, EU 20%, domestic 25%'},
+  {id:'brazilagri',name:'Brazil Agriculture',x:260,y:290,r:9,color:'var(--agri)',resource:'Soybeans, Beef, Iron Ore',extractor:'BRF, Amaggi',capacity:'160M tons soy/yr',dest:'China 50%, EU 15%, Middle East 12%'},
+  {id:'safrica',name:'S. Africa Minerals',x:510,y:340,r:8,color:'var(--minerals)',resource:'Platinum, Gold, Chrome',extractor:'Anglo American, Sibanye',capacity:'110 MT platinum/yr',dest:'China 45%, Europe 25%, US 12%'},
+];
+const zonesLayer = document.getElementById('zonesLayer');
+zones.forEach(z => {
+  const g = document.createElementNS(SVG_NS, 'g');
+  g.setAttribute('class', 'zone');
+  g.setAttribute('data-zone', z.id);
+  g.setAttribute('transform', `translate(${z.x},${z.y})`);
+  const ring = document.createElementNS(SVG_NS, 'circle');
+  ring.setAttribute('r', z.r+4);
+  ring.setAttribute('class', 'zone-ring');
+  ring.setAttribute('fill', z.color);
+  ring.setAttribute('opacity', '0.25');
+  ring.setAttribute('vector-effect', 'non-scaling-stroke');
+  const dot = document.createElementNS(SVG_NS, 'circle');
+  dot.setAttribute('r', z.r);
+  dot.setAttribute('fill', z.color);
+  dot.setAttribute('opacity', '0.85');
+  dot.setAttribute('filter', 'url(#glow)');
+  g.appendChild(ring);
+  g.appendChild(dot);
+  zonesLayer.appendChild(g);
+});
+// ─── Chokepoints ─────────────────────────────────────────────────
+const chokepoints = [
+  {id:'hormuz',name:'Strait of Hormuz',x:635,y:158,stats:[
+    {l:'Daily Oil Flow',v:'21M bbl/day'},
+    {l:'% World Oil',v:'20%'},
+    {l:'% World LNG',v:'20%'},
+    {l:'Width',v:'21 miles'},
+    {l:'Depth',v:'230 ft'},
+  ],risk:'HIGH — Iran tensions, Houthi activity',whatIf:'Full closure: +$20-40/barrel in days. Europe and Asia scramble for alternatives. UAE pipeline capacity doubles overnight. Saudi routes shift south to Bab-el-Mandeb.'},
+  {id:'malacca',name:'Strait of Malacca',x:780,y:200,stats:[
+    {l:'Annual Trade',v:'$3.4T'},
+    {l:'% World Trade',v:'25%'},
+    {l:'Width',v:'1.7 miles (narrowest)'},
+    {l:'Ships/Year',v:'94K vessels'},
+  ],risk:'LOW — piracy concerns, but open',whatIf:'Closure: China-Japan-Korea trade detour via Lombok adds 3-5 days and $50B/yr in extra shipping costs. Would trigger Asian economic slowdown.'},
+  {id:'suez',name:'Suez Canal',x:530,y:145,stats:[
+    {l:'Annual Trade',v:'$1.4T'},
+    {l:'% World Trade',v:'12%'},
+    {l:'Ships/Year',v:'19K vessels'},
+    {l:'Avg Delay (blockage)',v:'6 days'},
+  ],risk:'MODERATE — geopolitical tension',whatIf:'2021 Ever Given: $9.6B/day delayed. Full closure: Europe-Asia trade rerouted via Cape of Good Hope (+2 weeks, +$1M fuel per ship).'},
+  {id:'panama',name:'Panama Canal',x:220,y:215,stats:[
+    {l:'Annual Trade',v:'$270B'},
+    {l:'% World Trade',v:'5%'},
+    {l:'Ships/Year',v:'13K vessels'},
+    {l:'Draft Restrictions',v:'Drought limits'},
+  ],risk:'MODERATE — climate/draught impacts',whatIf:'Drought restrictions: some ships diverted via Cape Horn (+3 weeks). US-Asia trade significantly impacted. East Coast US importers pay premiums.'},
+  {id:'bab',name:'Bab-el-Mandeb',x:600,y:170,stats:[
+    {l:'EU LNG Imports',v:'30%'},
+    {l:'% World Trade',v:'20%'},
+    {l:'Ships/Year',v:'21K vessels'},
+  ],risk:'HIGH — Houthi threats ongoing',whatIf:'Closure: LNG from Middle East to Europe blocked. Europe LNG prices spike. Alternative: Cape of Good Hope (+10 days). Houthis have attacked ships here in 2024.'},
+  {id:'danish',name:'Danish Straits',x:480,y:68,stats:[
+    {l:'Russian Gas to EU',v:'65B m³/yr'},
+    {l:'% EU Gas',v:'8%'},
+    {l:'Key Route',v:'Russia→Germany'},
+  ],risk:'LOW — currently open',whatIf:'Tension: Russian gas flows have already shifted. Nord Stream damaged. Now via Yamal pipeline through Belarus/Poland. Any escalation affects Baltic states.'},
+  {id:'bosporus',name:'Bosphorus Strait',x:545,y:98,stats:[
+    {l:'Oil to Europe',v:'2.5M bbl/day'},
+    {l:'% World Oil',v:'3%'},
+    {l:'Annual Trade',v:'$1.3T'},
+    {l:'Border',v:'Turkey'},
+  ],risk:'LOW-MODERATE',whatIf:'Affects Caspian oil (Azerbaijan, Kazakhstan) to Europe. Alternative: BTC pipeline direct to Mediterranean, but limited capacity.'},
+  {id:'gibraltar',name:'Gibraltar Strait',x:440,y:125,stats:[
+    {l:'Mediterranean Access',v:'100K ships/yr'},
+    {l:'% World Trade',v:'Significant'},
+    {l:'Border',v:'UK/Spain dispute'},
+  ],risk:'LOW',whatIf:'Only Atlantic access for Mediterranean. Rerouting adds 1-2 days around Iberian Peninsula. Minimal economic impact.'},
+  {id:'cape',name:'Cape of Good Hope',x:510,y:365,stats:[
+    {l:'Bypass Route',v:'For Suez/Panama'},
+    {l:'Extra Time',v:'+10-14 days vs Suez'},
+    {l:'Extra Cost',v:'+$500K-1M/ship'},
+    {l:'Current Use',v:'Rising due to Suez risk'},
+  ],risk:'LOW — weather hazard only',whatIf:'Suez closure forces all Asia-Europe trade this way. 2024: Houthi threats drove 40% increase in Cape traffic. Weather + piracy = genuine risk.'},
+  {id:'taiwan',name:'Taiwan Strait',x:860,y:175,stats:[
+    {l:'Semiconductor Trade',v:'$700B/yr'},
+    {l:'TSMC Export Value',v:'$70B/yr'},
+    {l:'Chip Shortage Impact',v:'Global auto, tech'},
+  ],risk:'CRITICAL — cross-strait tension',whatIf:'Taiwan conflict: TSMC offline or blockaded. Global recession within 6 months. No substitute for advanced chip production. Every car, phone, defense system affected.'},
+  {id:'lombok',name:'Lombok Strait',x:800,y:245,stats:[
+    {l:'Malacca Alternative',v:'40K ships/yr'},
+    {l:'Extra vs Malacca',v:'+3-5 days'},
+    {l:'Depth',v:'Deepwater route'},
+  ],risk:'LOW',whatIf:'Malacca closure triggers shift here. Indonesia benefits from tolls. Slight economic impact for Asia trade.'},
+  {id:'redsea',name:'Red Sea Corridor',x:575,y:165,stats:[
+    {l:'Oil to Europe',v:'4.5M bbl/day'},
+    {l:'% World Trade',v:'15%'},
+    {l:'Houthi Threat',v:'Active since 2024'},
+  ],risk:'HIGH — ongoing Houthi attacks',whatIf:'2024: Houthis hit 100+ vessels. Insurance premiums up 500%. Many ships diverting to Cape of Good Hope (+14 days, +$1M fuel cost). Inflationary impact globally.'},
+];
+const chokepointsLayer = document.getElementById('chokepointsLayer');
+chokepoints.forEach(c => {
+  const g = document.createElementNS(SVG_NS, 'g');
+  g.setAttribute('class', 'chokepoint');
+  g.setAttribute('data-chokepoint', c.id);
+  g.setAttribute('transform', `translate(${c.x},${c.y})`);
+  g.setAttribute('transform', `translate(${c.x},${c.y})`);
+  const pulse = document.createElementNS(SVG_NS, 'circle');
+  pulse.setAttribute('r', 12);
+  pulse.setAttribute('class', 'chokepoint-pulse');
+  pulse.setAttribute('vector-effect', 'non-scaling-stroke');
+  const dot = document.createElementNS(SVG_NS, 'circle');
+  dot.setAttribute('r', 8);
+  dot.setAttribute('class', 'chokepoint-dot');
+  dot.setAttribute('vector-effect', 'non-scaling-stroke');
+  g.appendChild(pulse);
+  g.appendChild(dot);
+  chokepointsLayer.appendChild(g);
+});
+// ─── Pan & Zoom ─────────────────────────────────────────────────
+let scale = 1, tx = 0, ty = 0;
+let startDist = 0, startScale = 1, startTx, startTy;
+let isDragging = false, lastX, lastY;
+const mapEl = document.getElementById('map');
+const mapWrap = document.getElementById('mapWrap');
+function applyTransform() {
+  mapEl.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
+}
+function getTouchDist(touches) {
+  const dx = touches[0].clientX - touches[1].clientX;
+  const dy = touches[0].clientY - touches[1].clientY;
+  return Math.sqrt(dx*dx + dy*dy);
+}
+mapWrap.addEventListener('touchstart', e => {
+  if(e.touches.length === 2) {
+    startDist = getTouchDist(e.touches);
+    startScale = scale;
+  } else if(e.touches.length === 1) {
+    isDragging = true;
+    lastX = e.touches[0].clientX;
+    lastY = e.touches[0].clientY;
+    startTx = tx; startTy = ty;
   }
-};
-const zoneData = {
-  saudi: { name: "Saudi Arabia Oil", resource: "Oil", extractor: "Saudi Aramco", destination: "Asia 60%, Europe 25%, US 10%", capacity: "12 MBD" },
-  kuwait: { name: "Kuwait/Iraq Oil", resource: "Oil", extractor: "KOC, Iraqi Ministry of Oil", destination: "Asia 70%, Europe 20%", capacity: "6.5 MBD" },
-  iran: { name: "Iran Oil", resource: "Oil", extractor: "NIOC", destination: "China 80%, Limited others", capacity: "4 MBD (sanctioned)" },
-  uae: { name: "UAE Oil", resource: "Oil", extractor: "ADNOC", destination: "Asia 75%, Europe 15%", capacity: "4.2 MBD" },
-  russia1: { name: "Russia West Siberia", resource: "Oil", extractor: "Rosneft, Lukoil", destination: "Europe 45%, China 35%", capacity: "10 MBD" },
-  russia2: { name: "Russia East", resource: "Oil", extractor: "Rosneft, Transneft", destination: "China 70%, Pacific Rim 20%", capacity: "3 MBD" },
-  permian: { name: "US Permian Basin", resource: "Oil", extractor: "Exxon, Chevron, independents", destination: "US exports, Mexico 15%", capacity: "6 MBD" },
-  bakken: { name: "US Bakken", resource: "Oil", extractor: "Continental, Whiting", destination: "Midwest refining, exports", capacity: "1.2 MBD" },
-  venezuela: { name: "Venezuela Oil", resource: "Oil", extractor: "PDVSA", destination: "US (limited), China 40%", capacity: "2 MBD" },
-  nigeria: { name: "Nigeria Oil", resource: "Oil", extractor: "Shell, Total, Nigerian NOCs", destination: "Europe 50%, US 20%, Asia 20%", capacity: "2.5 MBD" },
-  brazil: { name: "Brazil Pre-Salt", resource: "Oil", extractor: "Petrobras", destination: "China 35%, US 20%, domestic 25%", capacity: "3.5 MBD" },
-  uk: { name: "UK/Norway Oil", resource: "Oil", extractor: "Equinor, Shell, BP", destination: "Europe refining, tankers", capacity: "3 MBD" },
-  qatar: { name: "Qatar LNG", resource: "LNG", extractor: "QatarEnergy", destination: "Asia 70%, Europe 20%, Middle East 10%", capacity: "77 MTPA" },
-  australia: { name: "Australia LNG", resource: "LNG", extractor: "Woodside, Santos, Origin", destination: "Japan 35%, China 30%, Korea 15%", capacity: "88 MTPA" },
-  usgulf: { name: "US Gulf LNG", resource: "LNG", extractor: "Cheniere, Freeport, Sabine Pass", destination: "Europe 50%, Asia 35%, Latin America 10%", capacity: "14 Bcf/d" },
-  yamal: { name: "Russia Yamal LNG", resource: "LNG", extractor: "Novatek", destination: "Europe (historically), China (now)", capacity: "19 MTPA" },
-  chile: { name: "Chile Minerals", resource: "Minerals", extractor: "Codelco, Antofagasta Minerals", destination: "China 40%, US 20%, Europe 25%", product: "Copper 5.5 MMT/yr" },
-  congo: { name: "Congo Minerals", resource: "Minerals", extractor: "Glencore, Ivanhoe Mines", destination: "China 70%, global refined", product: "Cobalt 120K MT/yr" },
-  china: { name: "China Minerals", resource: "Minerals", extractor: "China Minmetals, domestic", destination: "Domestic manufacturing, exports", product: "REEs, steel, aluminum" },
-  indonesia: { name: "Indonesia Minerals", resource: "Minerals", extractor: "Freeport, Antam", destination: "China 50%, Japan 15%, US 10%", product: "Nickel 1.6 MMT/yr" },
-  safrica: { name: "South Africa Minerals", resource: "Minerals", extractor: "Anglo American, Sibanye", destination: "China 40%, Europe 25%, US 15%", product: "Platinum 110 MT/yr" },
-  ukraine: { name: "Ukraine Agriculture", resource: "Agriculture", extractor: "Ukrainian collectives, NIBULON", destination: "Europe 40%, Asia 35%, Africa 20%", product: "Wheat 25 MMT/yr" },
-  usmidwest: { name: "US Midwest Agriculture", resource: "Agriculture", extractor: "ADM, Cargill, family farms", destination: "Export 50%, Domestic 50%", product: "Corn 400 MMT/yr" },
-  brazilagri: { name: "Brazil Agriculture", resource: "Agriculture", extractor: "BRF, Amaggi,cooperatives", destination: "China 45%, EU 20%, Middle East 15%", product: "Soybeans 160 MMT/yr" },
-  argentina: { name: "Argentina Agriculture", resource: "Agriculture", extractor: "ACA, Cresud", destination: "China 30%, EU 25%, domestic 30%", product: "Soybeans 55 MMT/yr" }
-};
-let zoom = 1;
-const map = document.getElementById('map');
+}, {passive: true});
+mapWrap.addEventListener('touchmove', e => {
+  if(e.touches.length === 2) {
+    const dist = getTouchDist(e.touches);
+    scale = Math.max(0.5, Math.min(4, startScale * (dist/startDist)));
+    applyTransform();
+  } else if(e.touches.length === 1 && isDragging) {
+    tx = startTx + (e.touches[0].clientX - lastX);
+    ty = startTy + (e.touches[0].clientY - lastY);
+    applyTransform();
+  }
+}, {passive: true});
+mapWrap.addEventListener('touchend', () => { isDragging = false; }, {passive: true});
+mapWrap.addEventListener('wheel', e => {
+  e.preventDefault();
+  scale = Math.max(0.5, Math.min(4, scale - e.deltaY * 0.001));
+  applyTransform();
+}, {passive: false});
+// Mouse drag
+mapWrap.addEventListener('mousedown', e => {
+  isDragging = true;
+  lastX = e.clientX; lastY = e.clientY;
+  startTx = tx; startTy = ty;
+});
+mapWrap.addEventListener('mousemove', e => {
+  if(!isDragging) return;
+  tx = startTx + (e.clientX - lastX);
+  ty = startTy + (e.clientY - lastY);
+  applyTransform();
+});
+mapWrap.addEventListener('mouseup', () => { isDragging = false; });
+mapWrap.addEventListener('mouseleave', () => { isDragging = false; });
+// ─── Popups ───────────────────────────────────────────────────────
+const popup = document.getElementById('popup');
+const popupTitle = document.getElementById('popupTitle');
+const popupType = document.getElementById('popupType');
+const popupBody = document.getElementById('popupBody');
+const closeBtn = document.getElementById('closePopup');
+function showPopup() { popup.classList.add('show'); }
+function hidePopup() { popup.classList.remove('show'); }
+closeBtn.addEventListener('click', hidePopup);
+popup.addEventListener('click', e => { if(e.target === popup) hidePopup(); });
+document.getElementById('popupHandle').addEventListener('click', hidePopup);
+// Chokepoint clicks
 document.querySelectorAll('.chokepoint').forEach(el => {
-  el.addEventListener('click', (e) => {
+  el.addEventListener('click', () => {
     const id = el.dataset.chokepoint;
-    const d = chokepointData[id];
-    if (!d) return;
-    document.getElementById('popupTitle').textContent = d.name;
+    const c = chokepoints.find(x => x.id === id);
+    if(!c) return;
+    popupTitle.textContent = c.name;
+    popupType.textContent = 'Chokepoint';
     let html = '';
-    d.stats.forEach(s => {
-      html += `<div class="popup-row"><span class="popup-label">${s.label}</span><span class="popup-value">${s.value}</span></div>`;
-    });
-    html += '<div class="popup-section"><h3>2026 RISK ASSESSMENT</h3><div class="popup-row"><span class="popup-label">Status</span><span class="popup-value" style="color:var(--accent)">'+d.risk+'</span></div></div>';
-    html += '<div class="popup-section"><h3>WHAT IF IT CLOSES?</h3><p style="font-size:11px;color:var(--text-sec);line-height:1.5">'+d.whatIf+'</p></div>';
-    document.getElementById('popupContent').innerHTML = html;
+    c.stats.forEach(s => html += `<div class="popup-row"><span class="popup-label">${s.l}</span><span class="popup-value">${s.v}</span></div>`);
+    html += `<div class="popup-section"><h4>2026 Risk Assessment</h4><p>${c.risk}</p></div>`;
+    html += `<div class="popup-section"><h4>What If It Closes?</h4><p>${c.whatIf}</p></div>`;
+    popupBody.innerHTML = html;
     showPopup();
   });
 });
-document.querySelectorAll('.resource-zone').forEach(el => {
-  el.addEventListener('click', (e) => {
+// Zone clicks
+document.querySelectorAll('.zone').forEach(el => {
+  el.addEventListener('click', () => {
     const id = el.dataset.zone;
-    const d = zoneData[id];
-    if (!d) return;
-    document.getElementById('popupTitle').textContent = d.name;
+    const z = zones.find(x => x.id === id);
+    if(!z) return;
+    popupTitle.textContent = z.name;
+    popupType.textContent = 'Resource Zone';
     let html = '';
-    html += `<div class="popup-row"><span class="popup-label">Resource</span><span class="popup-value">${d.resource}</span></div>`;
-    html += `<div class="popup-row"><span class="popup-label">Extractor</span><span class="popup-value">${d.extractor}</span></div>`;
-    html += `<div class="popup-row"><span class="popup-label">Capacity</span><span class="popup-value">${d.capacity || d.product}</span></div>`;
-    html += '<div class="popup-section"><h3>DESTINATION</h3><p style="font-size:11px;color:var(--text-sec);line-height:1.5">'+d.destination+'</p></div>';
-    document.getElementById('popupContent').innerHTML = html;
+    html += `<div class="popup-row"><span class="popup-label">Resource</span><span class="popup-value highlight">${z.resource}</span></div>`;
+    html += `<div class="popup-row"><span class="popup-label">Extractor</span><span class="popup-value">${z.extractor}</span></div>`;
+    html += `<div class="popup-row"><span class="popup-label">Capacity</span><span class="popup-value">${z.capacity}</span></div>`;
+    html += `<div class="popup-row"><span class="popup-label">Destinations</span><span class="popup-value">${z.dest}</span></div>`;
+    popupBody.innerHTML = html;
     showPopup();
   });
 });
+// Route clicks
+const routeDescs = {
+  oil: 'Crude oil and refined products flow from Middle East, Russia, and Americas to refineries in Asia, Europe, and the US. Tankers average 500K DWT.',
+  gas: 'Liquefied natural gas transported in cryogenic vessels from Qatar, Australia, US Gulf, and Russia to regasification terminals worldwide.',
+  minerals: 'Copper, cobalt, nickel, lithium, and rare earth elements ship from Chile, Congo, Indonesia, and South Africa to manufacturing hubs.',
+  agri: 'Wheat, corn, and soybeans flow from Ukraine, US Midwest, Brazil, and Argentina to food-deficient regions and livestock operations.',
+  bypass: 'Alternative route when primary chokepoints are blocked. Adds 10-14 days and $500K-1M in extra fuel costs per voyage.'
+};
 document.querySelectorAll('.route').forEach(el => {
-  el.addEventListener('click', (e) => {
-    const type = el.dataset.type;
-    const typeNames = { oil: 'OIL', lng: 'LNG', minerals: 'MINERALS', agri: 'AGRICULTURE' };
-    const descs = {
-      oil: 'Crude oil and refined products flow from Middle East, Russia, Americas to refineries in Asia, Europe, US. Tankers average 500K DWT.',
-      lng: 'Liquefied natural gas transported in cryogenic vessels from Qatar, Australia, US, Russia to regasification terminals worldwide.',
-      minerals: 'Copper, cobalt, nickel, lithium, and rare earth elements ship from Chile, Congo, Indonesia, South Africa to manufacturing hubs.',
-      agri: 'Wheat, corn, soybeans flow from Ukraine, US Midwest, Brazil, Argentina to food-deficient regions and livestock operations.'
-    };
-    document.getElementById('popupTitle').textContent = typeNames[type] + ' SHIPPING ROUTE';
-    document.getElementById('popupContent').innerHTML = '<p style="font-size:12px;color:var(--text-sec);line-height:1.6">'+descs[type]+'</p>';
+  el.addEventListener('click', () => {
+    const type = el.className.split(' ').find(c => ['oil','gas','minerals','agri','bypass'].includes(c));
+    const typeNames = {oil:'OIL',gas:'GAS/LNG',minerals:'MINERALS',agri:'AGRICULTURE',bypass:'BYPASS ROUTE'};
+    popupTitle.textContent = typeNames[type] + ' Route';
+    popupType.textContent = 'Shipping Lane';
+    popupBody.innerHTML = `<p style="font-size:13px;line-height:1.7;color:var(--text2)">${routeDescs[type]}</p>`;
     showPopup();
   });
 });
-function showPopup() {
-  document.getElementById('popupOverlay').style.display = 'block';
-  document.getElementById('popup').style.display = 'block';
-}
-function closePopup() {
-  document.getElementById('popupOverlay').style.display = 'none';
-  document.getElementById('popup').style.display = 'none';
-}
-document.getElementById('popupOverlay').addEventListener('click', closePopup);
-document.querySelectorAll('.btn[data-toggle]').forEach(btn => {
+// ─── Layer Toggles ─────────────────────────────────────────────────
+document.querySelectorAll('.toggle-btn').forEach(btn => {
   btn.addEventListener('click', () => {
-    const target = btn.dataset.toggle;
-    const el = document.getElementById(target);
-    if (!el) return;
-    const isActive = btn.classList.contains('active');
+    const layer = btn.dataset.layer;
     btn.classList.toggle('active');
-    el.style.display = isActive ? 'none' : 'block';
+    const isActive = btn.classList.contains('active');
+    const layerMap = {routes:'routesLayer',zones:'zonesLayer',chokepoints:'chokepointsLayer'};
+    const el = document.getElementById(layerMap[layer]);
+    el.style.display = isActive ? 'block' : 'none';
   });
 });
-document.getElementById('zoomIn').addEventListener('click', () => {
-  zoom = Math.min(zoom + 0.25, 3);
-  map.style.transform = `scale(${zoom})`;
-  map.style.transformOrigin = 'center center';
-});
-document.getElementById('zoomOut').addEventListener('click', () => {
-  zoom = Math.max(zoom - 0.25, 0.5);
-  map.style.transform = `scale(${zoom})`;
-  map.style.transformOrigin = 'center center';
-});
-function toggleLegend() {
-  const items = document.getElementById('legendItems');
-  const arrow = document.getElementById('legendArrow');
-  items.classList.toggle('show');
-  arrow.textContent = items.classList.contains('show') ? '▼' : '▲';
-}
-document.getElementById('timestamp').textContent = new Date().toISOString().slice(0,10) + ' // LIVE';
+// ─── Init ─────────────────────────────────────────────────────────
+setTimeout(() => {
+  document.getElementById('loading').classList.add('hide');
+}, 400);
 </script>
 </body>
 </html>

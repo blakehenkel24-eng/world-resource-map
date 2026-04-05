@@ -4,85 +4,45 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Global Chokepoints</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#0a0a0a;color:#e0e0e0;font-family:-apple-system,BlinkMacSystemFont,sans-serif;height:100vh;overflow:hidden;touch-action:none}
-#header{padding:16px 20px;background:#0f0f0f;border-bottom:1px solid #222;display:flex;justify-content:space-between;align-items:center}
-#header h1{font-size:14px;font-weight:700;color:#FF6600;letter-spacing:2px}
-#header p{font-size:11px;color:#666;margin-top:2px}
-#map{width:100%;height:calc(100vh - 130px);display:block;cursor:grab}
-#map:active{cursor:grabbing}
-#panel{position:fixed;bottom:0;left:0;right:0;background:#111;border-top:2px solid #FF6600;border-radius:20px 20px 0 0;padding:20px 20px 40px;transform:translateY(100%);transition:transform .3s ease;z-index:100;max-height:70vh;overflow-y:auto}
+body{background:#0a0a0a;color:#e0e0e0;font-family:-apple-system,BlinkMacSystemFont,sans-serif}
+#header{padding:14px 16px;background:#0f0f0f;border-bottom:1px solid #222;display:flex;justify-content:space-between;align-items:center;position:fixed;top:0;left:0;right:0;z-index:1000}
+#header h1{font-size:13px;font-weight:700;color:#FF6600;letter-spacing:2px}
+#header p{font-size:10px;color:#666;margin-top:2px}
+#map{width:100%;height:100vh}
+#panel{position:fixed;bottom:0;left:0;right:0;background:#111;border-top:2px solid #FF6600;border-radius:20px 20px 0 0;padding:20px 18px 40px;transform:translateY(100%);transition:transform .3s ease;z-index:1000;max-height:75vh;overflow-y:auto}
 #panel.open{transform:translateY(0)}
-.panel-handle{width:36px;height:4px;background:#333;border-radius:2px;margin:0 auto 16px}
+.panel-handle{width:36px;height:4px;background:#333;border-radius:2px;margin:0 auto 14px}
 #panelTitle{font-size:18px;font-weight:700;color:#FF6600;margin-bottom:4px}
-#panelSub{font-size:11px;color:#666;text-transform:uppercase;letter-spacing:1px;margin-bottom:16px}
-.panel-row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #222}
-.panel-label{font-size:12px;color:#888}
-.panel-value{font-size:13px;font-family:'Courier New',monospace;color:#fff}
-.panel-section{margin-top:14px;padding:12px;background:rgba(255,102,0,.08);border:1px solid rgba(255,102,0,.2);border-radius:8px}
-.panel-section h4{font-size:10px;color:#FF6600;letter-spacing:1.5px;margin-bottom:8px}
+#panelSub{font-size:10px;color:#666;text-transform:uppercase;letter-spacing:1px;margin-bottom:14px}
+.panel-row{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #222;gap:12px}
+.panel-label{font-size:11px;color:#888;flex-shrink:0}
+.panel-value{font-size:12px;font-family:'Courier New',monospace;color:#fff;text-align:right}
+.panel-section{margin-top:12px;padding:12px;background:rgba(255,102,0,.08);border:1px solid rgba(255,102,0,.2);border-radius:8px}
+.panel-section h4{font-size:9px;color:#FF6600;letter-spacing:1.5px;margin-bottom:6px;text-transform:uppercase}
 .panel-section p{font-size:12px;line-height:1.6;color:#ccc}
-.panel-btn{display:block;width:100%;padding:14px;background:#FF6600;color:#000;font-size:13px;font-weight:700;letter-spacing:1px;border:none;border-radius:8px;cursor:pointer;margin-top:14px;text-align:center}
-#closeBtn{position:absolute;top:16px;right:16px;width:32px;height:32px;border-radius:50%;border:1px solid #333;background:#1a1a1a;color:#888;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center}
-.legend{position:fixed;bottom:20px;left:16px;background:rgba(17,17,17,.9);border:1px solid #222;border-radius:10px;padding:12px 14px;z-index:5}
-.legend h3{font-size:9px;color:#666;letter-spacing:1.5px;margin-bottom:8px;text-transform:uppercase}
-.legend-item{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:11px}
-.legend-dot{width:10px;height:10px;border-radius:50%}
-.legend-line{width:14px;height:2px;border-radius:1px}
+.panel-close{position:absolute;top:14px;right:14px;width:32px;height:32px;border-radius:50%;border:1px solid #333;background:#1a1a1a;color:#888;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.legend{position:fixed;bottom:20px;left:14px;background:rgba(17,17,17,.92);border:1px solid #222;border-radius:10px;padding:10px 14px;z-index:500;backdrop-filter:blur(8px)}
+.legend h3{font-size:8px;color:#666;letter-spacing:1.5px;margin-bottom:8px;text-transform:uppercase}
+.legend-item{display:flex;align-items:center;gap:7px;margin-bottom:5px;font-size:10px;font-family:'Courier New',monospace}
+.legend-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.leaflet-popup-content-wrapper{background:#111;border:1px solid #333;border-radius:10px}
+.leaflet-popup-tip{background:#111}
+.leaflet-popup-content{color:#e0e0e0;font-family:-apple-system,sans-serif;font-size:12px;margin:12px}
+.leaflet-container{background:#0a0a0a}
 </style>
 </head>
 <body>
 <div id="header">
   <div>
     <h1>GLOBAL CHOKEPOINTS</h1>
-    <p>Tap any marker to explore</p>
+    <p>Strategic Trade Intelligence</p>
   </div>
 </div>
-<svg id="map" viewBox="0 0 1000 500">
-  <!-- OCEAN -->
-  <rect width="1000" height="500" fill="#0c0c0c"/>
-  <!-- COUNTRIES - Hand-coded recognizable shapes -->
-  <g id="countries">
-    <!-- NORTH AMERICA -->
-    <path class="country" d="M68,50 L110,40 L170,38 L230,48 L275,65 L295,85 L290,105 L275,125 L255,140 L235,145 L215,142 L195,148 L178,160 L172,180 L180,205 L172,228 L155,240 L138,235 L122,212 L108,188 L90,165 L72,140 L55,115 L42,90 L35,70 Z" fill="#1a1a1a" stroke="#2a2a2a" stroke-width="0.5"/>
-    <!-- CANADA/GREENLAND -->
-    <path class="country" d="M45,25 L100,18 L150,22 L175,35 L170,48 L145,52 L108,50 L72,52 L48,48 Z" fill="#1a1a1a" stroke="#2a2a2a" stroke-width="0.5"/>
-    <path class="country" d="M290,15 L350,10 L390,20 L392,42 L370,58 L330,62 L295,55 L280,38 Z" fill="#1a1a1a" stroke="#2a2a2a" stroke-width="0.5"/>
-    <!-- SOUTH AMERICA -->
-    <path class="country" d="M200,250 L230,240 L260,248 L275,280 L270,315 L250,350 L220,385 L195,400 L175,392 L168,360 L178,320 L190,285 L198,265 Z" fill="#1a1a1a" stroke="#2a2a2a" stroke-width="0.5"/>
-    <!-- EUROPE -->
-    <path class="country" d="M438,62 L468,55 L495,58 L518,68 L532,82 L528,98 L515,110 L495,115 L472,112 L455,102 L445,88 L435,75 Z" fill="#1a1a1a" stroke="#2a2a2a" stroke-width="0.5"/>
-    <!-- SCANDINAVIA -->
-    <path class="country" d="M490,38 L505,32 L518,38 L522,55 L515,70 L500,75 L488,68 L485,52 Z" fill="#1a1a1a" stroke="#2a2a2a" stroke-width="0.5"/>
-    <!-- UK -->
-    <path class="country" d="M435,72 L448,68 L455,78 L450,88 L440,90 L433,82 Z" fill="#1a1a1a" stroke="#2a2a2a" stroke-width="0.5"/>
-    <!-- AFRICA -->
-    <path class="country" d="M445,155 L480,145 L510,152 L538,170 L555,200 L558,235 L548,268 L528,298 L500,325 L472,340 L448,338 L432,315 L425,282 L428,250 L438,218 L445,185 Z" fill="#1a1a1a" stroke="#2a2a2a" stroke-width="0.5"/>
-    <!-- RUSSIA -->
-    <path class="country" d="M540,50 L590,45 L650,48 L720,55 L800,65 L860,80 L895,100 L905,128 L895,155 L865,172 L820,178 L775,175 L735,168 L695,160 L655,152 L615,142 L580,132 L555,118 L545,95 L542,70 Z" fill="#1a1a1a" stroke="#2a2a2a" stroke-width="0.5"/>
-    <!-- MIDDLE EAST -->
-    <path class="country" d="M552,115 L578,108 L598,118 L605,142 L592,162 L572,168 L558,155 L550,138 Z" fill="#1a1a1a" stroke="#2a2a2a" stroke-width="0.5"/>
-    <!-- INDIA -->
-    <path class="country" d="M658,148 L685,140 L705,158 L708,188 L695,215 L675,225 L658,218 L652,190 L655,165 Z" fill="#1a1a1a" stroke="#2a2a2a" stroke-width="0.5"/>
-    <!-- SOUTHEAST ASIA -->
-    <path class="country" d="M755,180 L778,175 L802,185 L818,205 L812,230 L795,242 L772,238 L760,220 Z" fill="#1a1a1a" stroke="#2a2a2a" stroke-width="0.5"/>
-    <!-- JAPAN -->
-    <path class="country" d="M862,118 L878,112 L892,122 L888,140 L872,148 L858,140 L860,125 Z" fill="#1a1a1a" stroke="#2a2a2a" stroke-width="0.5"/>
-    <!-- AUSTRALIA -->
-    <path class="country" d="M775,295 L810,288 L848,298 L872,322 L868,358 L840,388 L805,398 L772,390 L760,365 L768,330 L775,305 Z" fill="#1a1a1a" stroke="#2a2a2a" stroke-width="0.5"/>
-    <!-- CHINA -->
-    <path class="country" d="M740,100 L780,95 L820,98 L860,110 L885,130 L888,160 L870,185 L835,200 L795,205 L755,200 L720,188 L695,170 L680,145 L695,115 L715,100 Z" fill="#1a1a1a" stroke="#2a2a2a" stroke-width="0.5"/>
-    <!-- BRAZIL highlight area for reference -->
-    <path class="country" d="M230,295 L250,285 L265,305 L268,340 L255,375 L235,395 L215,390 L205,360 L215,320 Z" fill="#1a1a1a" stroke="#2a2a2a" stroke-width="0.5"/>
-  </g>
-  <!-- CHOKEPOINTS -->
-  <g id="chokepoints"></g>
-  <!-- ZONES -->
-  <g id="zones"></g>
-  <!-- ROUTES -->
-  <g id="routes"></g>
-</svg>
+<div id="map"></div>
 <div class="legend">
   <h3>Legend</h3>
   <div class="legend-item"><div class="legend-dot" style="background:#FF6600"></div> Chokepoint</div>
@@ -93,172 +53,170 @@ body{background:#0a0a0a;color:#e0e0e0;font-family:-apple-system,BlinkMacSystemFo
 </div>
 <div id="panel">
   <div class="panel-handle"></div>
-  <button id="closeBtn">×</button>
+  <button class="panel-close" onclick="closePanel()">×</button>
   <div id="panelTitle">Title</div>
   <div id="panelSub">Type</div>
   <div id="panelBody"></div>
 </div>
 <script>
-const SVG_NS = 'http://www.w3.org/2000/svg';
+// Leaflet map - high fidelity using OpenStreetMap tiles
+const map = L.map('map', {
+  center: [20, 10],
+  zoom: 2,
+  minZoom: 2,
+  maxZoom: 8,
+  worldCopyJump: true,
+  zoomControl: false
+});
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  attribution: '© OpenStreetMap contributors © CARTO',
+  subdomains: 'abcd',
+  maxZoom: 20
+}).addTo(map);
+L.control.zoom({position:'topright'}).addTo(map);
+
+// Custom markers
 const chokepoints = [
-  {id:'hormuz',name:'Strait of Hormuz',x:378,y:182,stats:[
+  {id:'hormuz',name:'Strait of Hormuz',lat:26.5,lon:56.5,stats:[
     {l:'Daily Oil Flow',v:'21M bbl/day'},
     {l:'% World Oil',v:'20%'},
     {l:'Width',v:'21 miles'},
     {l:'Depth',v:'230 ft'},
-    {l:'Key Players',v:'Iran, Oman'},
-  ],risk:'HIGH',whatIf:'Full closure: +$20-40/barrel within days. Europe and Asia scramble for alternatives. Saudi routes shift south to Bab-el-Mandeb.'},
-  {id:'malacca',name:'Strait of Malacca',x:478,y:248,stats:[
+  ],risk:'HIGH',whatIf:'Full closure: +$20-40/barrel within days. Europe and Asia scramble. Saudi routes shift south to Bab-el-Mandeb.'},
+  {id:'malacca',name:'Strait of Malacca',lat:2.5,lon:100.5,stats:[
     {l:'Annual Trade Value',v:'$3.4 Trillion'},
     {l:'% World Trade',v:'25%'},
     {l:'Width (narrowest)',v:'1.7 miles'},
     {l:'Ships/Year',v:'94,000'},
-  ],risk:'LOW',whatIf:'Closure: China-Japan-Korea trade detour via Lombok adds 3-5 days and $50B/yr in extra shipping costs.'},
-  {id:'suez',name:'Suez Canal',x:288,y:175,stats:[
+  ],risk:'LOW',whatIf:'Closure: China-Japan-Korea trade detour via Lombok adds 3-5 days and $50B/yr in extra costs.'},
+  {id:'suez',name:'Suez Canal',lat:30.3,lon:32.3,stats:[
     {l:'Annual Trade',v:'$1.4 Trillion'},
     {l:'% World Trade',v:'12%'},
     {l:'Ships/Year',v:'19,000'},
     {l:'Avg Delay (blockage)',v:'6 days'},
-  ],risk:'MODERATE',whatIf:'2021 Ever Given: $9.6B/day delayed. Full closure: Europe-Asia trade rerouted via Cape of Good Hope (+2 weeks, +$1M fuel/ship).'},
-  {id:'panama',name:'Panama Canal',x:72,y:242,stats:[
+  ],risk:'MODERATE',whatIf:'2021 Ever Given: $9.6B/day delayed. Full closure: Europe-Asia via Cape of Good Hope (+2 weeks, +$1M fuel/ship).'},
+  {id:'panama',name:'Panama Canal',lat:9.1,lon:-80.0,stats:[
     {l:'Annual Trade',v:'$270 Billion'},
     {l:'% World Trade',v:'5%'},
     {l:'Ships/Year',v:'13,000'},
     {l:'Current Issue',v:'Drought restrictions'},
-  ],risk:'MODERATE',whatIf:'Drought: ships diverted via Cape Horn (+3 weeks). US East Coast importers pay premiums. Climate risk is growing.'},
-  {id:'bab',name:'Bab-el-Mandeb',x:320,y:218,stats:[
-    {l:'EU LNG Imports via this route',v:'30%'},
+  ],risk:'MODERATE',whatIf:'Drought: ships diverted via Cape Horn (+3 weeks). US East Coast importers pay premiums.'},
+  {id:'bab',name:'Bab-el-Mandeb',lat:12.6,lon:43.3,stats:[
+    {l:'EU LNG Imports via route',v:'30%'},
     {l:'% World Trade',v:'20%'},
     {l:'Ships/Year',v:'21,000'},
-  ],risk:'HIGH',whatIf:'Closure: Middle East LNG to Europe blocked. Spikes LNG prices. Alternative: Cape of Good Hope (+10 days).'},
-  {id:'danish',name:'Danish Straits',x:244,y:105,stats:[
-    {l:'Russian Gas to EU (historically)',v:'65B m³/yr'},
-    {l:'% EU Gas Needs',v:'8%'},
+  ],risk:'HIGH',whatIf:'Closure: Middle East LNG to Europe blocked. Spikes LNG prices. Alternative: Cape (+10 days).'},
+  {id:'danish',name:'Danish Straits',lat:57.5,lon:12.0,stats:[
+    {l:'Russian Gas to EU (hist.)',v:'65B m³/yr'},
+    {l:'% EU Gas',v:'8%'},
     {l:'Status',v:'Flows reduced'},
-  ],risk:'LOW',whatIf:'Already affected by Nord Stream damage. Russian gas now mostly rerouted. Baltic states most exposed to any escalation.'},
-  {id:'bosporus',name:'Bosphorus Strait',x:278,y:150,stats:[
+  ],risk:'LOW',whatIf:'Already affected by Nord Stream damage. Russian gas now rerouted. Baltic states most exposed.'},
+  {id:'bosporus',name:'Bosphorus Strait',lat:41.0,lon:28.5,stats:[
     {l:'Oil to Europe',v:'2.5M bbl/day'},
     {l:'Annual Trade',v:'$1.3 Trillion'},
     {l:'Border',v:'Turkey'},
-  ],risk:'LOW-MODERATE',whatIf:'Affects Caspian oil (Azerbaijan, Kazakhstan) to Europe. BTC pipeline is alternative but limited capacity.'},
-  {id:'gibraltar',name:'Gibraltar Strait',x:195,y:168,stats:[
+  ],risk:'LOW-MOD',whatIf:'Affects Caspian oil (Azerbaijan, Kazakhstan). BTC pipeline is alternative.'},
+  {id:'gibraltar',name:'Gibraltar Strait',lat:36.0,lon:-5.5,stats:[
     {l:'Mediterranean Access',v:'100K ships/yr'},
     {l:'Border',v:'UK/Spain'},
-  ],risk:'LOW',whatIf:'Only Atlantic access for Mediterranean. Adds 1-2 days around Iberian Peninsula. Minimal impact.'},
-  {id:'cape',name:'Cape of Good Hope',x:250,y:360,stats:[
+  ],risk:'LOW',whatIf:'Only Atlantic access for Mediterranean. Adds 1-2 days around Iberian Peninsula.'},
+  {id:'cape',name:'Cape of Good Hope',lat:-34.5,lon:18.5,stats:[
     {l:'Role',v:'Bypass route'},
     {l:'Extra Time vs Suez',v:'+10-14 days'},
     {l:'Extra Cost',v:'+$500K-1M/ship'},
-  ],risk:'LOW',whatIf:'Suez closure forces all Asia-Europe trade this way. 2024: Houthi threats drove 40% increase in Cape traffic.'},
-  {id:'taiwan',name:'Taiwan Strait',x:498,y:188,stats:[
+  ],risk:'LOW',whatIf:'Suez closure forces all Asia-Europe trade via Cape. 2024: Houthi threats drove 40% increase.'},
+  {id:'taiwan',name:'Taiwan Strait',lat:24.5,lon:119.5,stats:[
     {l:'Semiconductor Trade',v:'$700B/yr'},
     {l:'TSMC Export Value',v:'$70B/yr'},
     {l:'Global Impact',v:'All advanced chips'},
-  ],risk:'CRITICAL',whatIf:'Taiwan conflict: TSMC offline. Global recession within 6 months. Every car, phone, defense system affected. No substitute.'},
-  {id:'lombok',name:'Lombok Strait',x:490,y:282,stats:[
+  ],risk:'CRITICAL',whatIf:'Taiwan conflict: TSMC offline. Global recession within 6 months. Every car, phone, defense system affected.'},
+  {id:'lombok',name:'Lombok Strait',lat:-8.5,lon:116.0,stats:[
     {l:'Malacca Alternative',v:'40K ships/yr'},
     {l:'Extra Transit Time',v:'+3-5 days'},
     {l:'Depth',v:'Deepwater route'},
-  ],risk:'LOW',whatIf:'Malacca closure shifts traffic here. Indonesia benefits from tolls. Slight Asian trade slowdown.'},
-  {id:'redsea',name:'Red Sea Corridor',x:306,y:200,stats:[
+  ],risk:'LOW',whatIf:'Malacca closure shifts traffic here. Indonesia benefits from tolls.'},
+  {id:'redsea',name:'Red Sea Corridor',lat:22.0,lon:38.0,stats:[
     {l:'Oil to Europe',v:'4.5M bbl/day'},
     {l:'% World Trade',v:'15%'},
     {l:'Houthi Threat',v:'Active since 2024'},
-  ],risk:'HIGH',whatIf:'2024: 100+ vessels hit by Houthis. Insurance premiums up 500%. Many ships diverting to Cape (+14 days, +$1M fuel).'},
+  ],risk:'HIGH',whatIf:'2024: 100+ vessels hit. Insurance premiums up 500%. Many diverting to Cape (+14 days).'},
 ];
 const zones = [
-  {id:'saudi',name:'Saudi Arabia',x:342,y:185,color:'orange',v:'10M bbl/day oil'},
-  {id:'russia',name:'Russia',x:334,y:102,color:'orange',v:'10M bbl/day + 700B m³ gas'},
-  {id:'qatar',name:'Qatar',x:360,y:185,color:'#00AAFF',v:'77 MTPA LNG'},
-  {id:'australia',name:'Australia',x:482,y:350,color:'#FFD700',v:'900M tons iron ore/yr'},
-  {id:'brazil',name:'Brazil',x:195,y:350,color:'orange',v:'3.4M bbl/day oil'},
-  {id:'china',name:'China',x:518,y:158,color:'#FFD700',v:'60% global rare earths'},
-  {id:'ukraine',name:'Ukraine',x:295,y:120,color:'#00CC66',v:'25M tons wheat/yr'},
-  {id:'usmidwest',name:'US Midwest',x:94,y:142,color:'#00CC66',v:'400M tons corn/yr'},
-  {id:'chile',name:'Chile',x:158,y:350,color:'#FFD700',v:'40% global lithium'},
-  {id:'congo',name:'DR Congo',x:278,y:310,color:'#FFD700',v:'120K tons cobalt/yr'},
-  {id:'indonesia',name:'Indonesia',x:528,y:308,color:'#FFD700',v:'1.6M tons nickel/yr'},
-  {id:'usgulf',name:'US Gulf Coast',x:106,y:180,color:'#00AAFF',v:'14 Bcf/day LNG'},
-  {id:'norway',name:'Norway',x:212,y:85,color:'#00AAFF',v:'1.8M bbl/day oil'},
-  {id:'nigeria',name:'Nigeria',x:245,y:248,color:'orange',v:'1.5M bbl/day oil'},
-  {id:'safrica',name:'South Africa',x:278,y:358,color:'#FFD700',v:'110 MT platinum/yr'},
+  {id:'saudi',name:'Saudi Arabia Oil',lat:24.0,lon:45.0,color:'orange',v:'10M bbl/day'},
+  {id:'russia',name:'Russia Oil & Gas',lat:55.0,lon:60.0,color:'orange',v:'10M bbl/day + 700B m³ gas'},
+  {id:'qatar',name:'Qatar LNG',lat:25.0,lon:51.0,color:'#00AAFF',v:'77 MTPA LNG'},
+  {id:'australia',name:'Australia Minerals',lat:-25.0,lon:133.0,color:'#FFD700',v:'900M tons iron ore/yr'},
+  {id:'brazil',name:'Brazil Pre-Salt Oil',lat:-25.0,lon:-40.0,color:'orange',v:'3.4M bbl/day'},
+  {id:'china',name:'China Manufacturing',lat:35.0,lon:115.0,color:'#FFD700',v:'60% global rare earths'},
+  {id:'ukraine',name:'Ukraine Agriculture',lat:49.0,lon:32.0,color:'#00CC66',v:'25M tons wheat/yr'},
+  {id:'usmidwest',name:'US Midwest Agriculture',lat:42.0,lon:-95.0,color:'#00CC66',v:'400M tons corn/yr'},
+  {id:'chile',name:'Chile Lithium',lat:-30.0,lon:-71.0,color:'#FFD700',v:'40% global lithium'},
+  {id:'congo',name:'DR Congo Cobalt',lat:-5.0,lon:25.0,color:'#FFD700',v:'120K tons cobalt/yr'},
+  {id:'indonesia',name:'Indonesia Nickel',lat:-5.0,lon:120.0,color:'#FFD700',v:'1.6M tons nickel/yr'},
+  {id:'norway',name:'Norway Oil & Gas',lat:62.0,lon:5.0,color:'#00AAFF',v:'1.8M bbl/day'},
+  {id:'nigeria',name:'Nigeria Oil',lat:8.0,lon:8.0,color:'orange',v:'1.5M bbl/day'},
+  {id:'usgulf',name:'US Gulf LNG',lat:30.0,lon:-93.0,color:'#00AAFF',v:'14 Bcf/day LNG'},
+  {id:'safrica',name:'South Africa Minerals',lat:-30.0,lon:25.0,color:'#FFD700',v:'110 MT platinum/yr'},
 ];
-// DRAW CHOKEPOINTS
-const chokepointsEl = document.getElementById('chokepoints');
+
+// Add chokepoint markers
 chokepoints.forEach(c => {
-  const g = document.createElementNS(SVG_NS,'g');
-  g.setAttribute('class','chokepoint');
-  g.setAttribute('data-id',c.id);
-  g.setAttribute('transform',`translate(${c.x},${c.y})`);
-  const ring = document.createElementNS(SVG_NS,'circle');
-  ring.setAttribute('r','14');
-  ring.setAttribute('fill','#FF6600');
-  ring.setAttribute('opacity','0.2');
-  const dot = document.createElementNS(SVG_NS,'circle');
-  dot.setAttribute('r','8');
-  dot.setAttribute('fill','#FF6600');
-  g.appendChild(ring);
-  g.appendChild(dot);
-  g.addEventListener('click',()=>showChokepoint(c));
-  chokepointsEl.appendChild(g);
+  const riskColors = {HIGH:'#FF6600',MODERATE:'#FFB800',LOW:'#00CC66',CRITICAL:'#FF3D00'};
+  const icon = L.divIcon({
+    className: 'chokepoint-marker',
+    html: `<div style="width:24px;height:24px;border-radius:50%;background:${riskColors[c.risk]};border:2px solid rgba(255,255,255,0.3);box-shadow:0 0 12px ${riskColors[c.risk]};cursor:pointer"></div>`,
+    iconSize: [24,24],
+    iconAnchor: [12,12]
+  });
+  L.marker([c.lat, c.lon], {icon}).addTo(map).on('click', () => showChokepoint(c));
 });
-// DRAW ZONES
-const zonesEl = document.getElementById('zones');
+
+// Add zone markers
 zones.forEach(z => {
-  const g = document.createElementNS(SVG_NS,'g');
-  g.setAttribute('class','zone');
-  g.setAttribute('data-id',z.id);
-  g.setAttribute('transform',`translate(${z.x},${z.y})`);
-  const dot = document.createElementNS(SVG_NS,'circle');
-  dot.setAttribute('r','6');
-  dot.setAttribute('fill',z.color);
-  dot.setAttribute('opacity','0.7');
-  g.appendChild(dot);
-  g.addEventListener('click',()=>showZone(z));
-  zonesEl.appendChild(g);
+  const icon = L.divIcon({
+    className: 'zone-marker',
+    html: `<div style="width:16px;height:16px;border-radius:50%;background:${z.color};opacity:0.7;border:1px solid rgba(255,255,255,0.2);cursor:pointer"></div>`,
+    iconSize: [16,16],
+    iconAnchor: [8,8]
+  });
+  L.marker([z.lat, z.lon], {icon}).addTo(map).on('click', () => showZone(z));
 });
-// PAN & ZOOM
-let scale=1,tx=0,ty=0,isDragging=false,lastX,lastY;
-const mapEl = document.getElementById('map');
-const mapWrap = document.getElementById('map');
-function apply(){mapEl.style.transform=`translate(${tx}px,${ty}px) scale(${scale})`}
-mapWrap.addEventListener('mousedown',e=>{isDragging=true;lastX=e.clientX;lastY=e.clientY;startTx=tx;startTy=ty});
-mapWrap.addEventListener('mousemove',e=>{if(!isDragging)return;tx=startTx+(e.clientX-lastX);ty=startTy+(e.clientY-lastY);apply()});
-mapWrap.addEventListener('mouseup',()=>isDragging=false);
-mapWrap.addEventListener('mouseleave',()=>isDragging=false);
-mapWrap.addEventListener('wheel',e=>{e.preventDefault();scale=Math.max(0.5,Math.min(4,scale-e.deltaY*0.001));apply()},{passive:false});
-let startDist,startScale;
-mapWrap.addEventListener('touchstart',e=>{
-  if(e.touches.length===2){startDist=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);startScale=scale}
-  else if(e.touches.length===1){isDragging=true;lastX=e.touches[0].clientX;lastY=e.touches[0].clientY;startTx=tx;startTy=ty}
-},{passive:true});
-mapWrap.addEventListener('touchmove',e=>{
-  if(e.touches.length===2){const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);scale=Math.max(0.5,Math.min(4,startScale*(d/startDist)));apply()}
-  else if(e.touches.length===1&&isDragging){tx=startTx+(e.touches[0].clientX-lastX);ty=startTy+(e.touches[0].clientY-lastY);apply()}
-},{passive:true});
-mapWrap.addEventListener('touchend',()=>isDragging=false);
-// PANEL
-const panel = document.getElementById('panel');
-const panelTitle = document.getElementById('panelTitle');
-const panelSub = document.getElementById('panelSub');
-const panelBody = document.getElementById('panelBody');
-function showChokepoint(c){
-  panelTitle.textContent = c.name;
-  panelSub.textContent = 'Chokepoint — Risk: '+c.risk;
+
+// Add routes as curved lines
+const routes = [
+  {pts:[[24,45],[26,56.5],[2.5,100.5],[35,115]],color:'orange'},
+  {pts:[[24,45],[30.3,32.3]],color:'orange'},
+  {pts:[[55,60],[57.5,12]],color:'#00AAFF'},
+  {pts:[[30,-93],[9.1,-80],[2.5,100.5]],color:'orange'},
+  {pts:[[-25,133],[35,115]],color:'#FFD700'},
+  {pts:[[-25,-40],[35,115]],color:'orange'},
+  {pts:[[62,5],[57.5,12]],color:'#00AAFF'},
+  {pts:[[8,8],[57.5,12]],color:'orange'},
+];
+routes.forEach(r => {
+  L.polyline(r.pts, {color:r.color, weight:1.5, opacity:0.4, dashArray:'4 4'}).addTo(map);
+});
+
+// Panel functions
+function showChokepoint(c) {
+  document.getElementById('panelTitle').textContent = c.name;
+  document.getElementById('panelSub').textContent = 'Chokepoint — Risk: ' + c.risk;
   let html = '';
-  c.stats.forEach(s=>html+=`<div class="panel-row"><span class="panel-label">${s.l}</span><span class="panel-value">${s.v}</span></div>`);
-  html+=`<div class="panel-section"><h4>WHAT IF IT CLOSES?</h4><p>${c.whatIf}</p></div>`;
-  panelBody.innerHTML = html;
-  panel.classList.add('open');
+  c.stats.forEach(s => html += `<div class="panel-row"><span class="panel-label">${s.l}</span><span class="panel-value">${s.v}</span></div>`);
+  html += `<div class="panel-section"><h4>What If It Closes?</h4><p>${c.whatIf}</p></div>`;
+  document.getElementById('panelBody').innerHTML = html;
+  document.getElementById('panel').classList.add('open');
 }
-function showZone(z){
-  panelTitle.textContent = z.name;
-  panelSub.textContent = 'Resource Zone';
-  panelBody.innerHTML = `<div class="panel-row"><span class="panel-label">Resource</span><span class="panel-value" style="color:${z.color}">${z.v}</span></div>`;
-  panel.classList.add('open');
+function showZone(z) {
+  document.getElementById('panelTitle').textContent = z.name;
+  document.getElementById('panelSub').textContent = 'Resource Zone';
+  document.getElementById('panelBody').innerHTML = `<div class="panel-row"><span class="panel-label">Resource</span><span class="panel-value" style="color:${z.color}">${z.v}</span></div>`;
+  document.getElementById('panel').classList.add('open');
 }
-document.getElementById('closeBtn').addEventListener('click',()=>panel.classList.remove('open'));
-document.querySelector('.panel-handle').addEventListener('click',()=>panel.classList.remove('open'));
+function closePanel() {
+  document.getElementById('panel').classList.remove('open');
+}
+document.querySelector('.panel-handle').addEventListener('click', closePanel);
 </script>
 </body>
 </html>
